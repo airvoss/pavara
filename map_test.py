@@ -14,12 +14,11 @@ class Pavara (ShowBase):
         ShowBase.__init__(self)
         self.x = None
         self.y = None
-        self.filters = CommonFilters(self.win, self.cam)
-        
+
         self.render.setShaderAuto()
         # Init Panda3D crap.
         self.initP3D()
-        maps = load_maps('Maps/bodhi.xml', self.cam)
+        maps = load_maps('Maps/objecttest.xml', self.cam)
         for map in maps:
             print map.name, '--', map.author
         self.map = maps[0]
@@ -34,9 +33,33 @@ class Pavara (ShowBase):
         self.setupInput()
 
         self.map.show(self.render)
-        print render.analyze()
+        black_shader=loader.loadShader("Shaders/blackShader.sha")
+        glow_buffer=self.win.make_texture_buffer("Glow scene", 512, 512)
+        glow_buffer.set_sort(-3)
+        glow_buffer.set_clear_color(Vec4(0,0,0,1))
+
+        # We have to attach a camera to the glow buffer. The glow camera
+        # must have the same frustum as the main camera. As long as the aspect
+        # ratios match, the rest will take care of itself.
+        glow_camera = self.makeCamera(glow_buffer, lens=self.cam.node().get_lens())
+
+        # Tell the glow camera to use the glow shader
+        tempnode = NodePath(PandaNode("temp node"))
+        tempnode.set_shader(black_shader, 100)
+        glow_camera.node().set_initial_state(tempnode.get_state())
+
+
+        # set up the pipeline: from glow scene to blur x to blur y to main window.
+        blur_xbuffer=self.make_filter_buffer(glow_buffer,  "Blur X", -2, "Shaders/XBlurShader.sha")
+        blur_ybuffer=self.make_filter_buffer(blur_xbuffer, "Blur Y", -1, "Shaders/YBlurShader.sha")
+        self.finalcard = blur_ybuffer.get_texture_card()
+        self.finalcard.reparent_to(render2d)
+        self.finalcard.set_attrib(ColorBlendAttrib.make(ColorBlendAttrib.MAdd))
         taskMgr.add(self.map.world.update, 'worldUpdateTask')
-        print render.analyze()
+        #base.bufferViewer.setPosition("llcorner")
+        #base.bufferViewer.setLayout("hline")
+        #base.bufferViewer.setCardSize(0.652,0)
+        #base.bufferViewer.toggleEnable()
 
         # axes = loader.loadModel('models/yup-axis')
         # axes.setScale(10)
@@ -45,7 +68,7 @@ class Pavara (ShowBase):
     def initP3D(self):
         self.setBackgroundColor(0, 0, 0)
         #self.enableParticles()
-        self.disableMouse() 
+        self.disableMouse()
         #self.filters.setBloom()
         render.setAntialias(AntialiasAttrib.MAuto)
         props = WindowProperties()
@@ -143,6 +166,19 @@ class Pavara (ShowBase):
             self.camera.setX(base.camera, 25 * dt)
 
         return task.cont
+
+    def make_filter_buffer(self, srcbuffer, name, sort, prog):
+        blur_buffer = self.win.make_texture_buffer(name, 512, 512)
+        blur_buffer.set_sort(sort)
+        blur_buffer.set_clear_color(Vec4(1,0,0,1))
+        blur_camera = self.makeCamera2d(blur_buffer)
+        blur_scene = NodePath("new Scene")
+        blur_camera.node().set_scene(blur_scene)
+        shader = loader.loadShader(prog)
+        card = srcbuffer.get_texture_card()
+        card.reparent_to(blur_scene)
+        card.set_shader(shader)
+        return blur_buffer
 
 if __name__ == '__main__':
     loadPrcFile('pavara.prc')

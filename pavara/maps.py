@@ -40,9 +40,9 @@ class Map (object):
     description = None
     world = None
     has_celestials = False
-    effects = []
 
     def __init__(self, root, camera):
+        self.effects = []
         self.name = root['name'] or 'Untitled Map'
         self.author = root['author'] or 'Unknown Author'
         self.tagline = root['tagline']
@@ -78,6 +78,11 @@ class Map (object):
     def parse_transparent(self, node):
         alpha = parse_float(node['alpha'])
         self.effects.append(lambda effected: Transparent(effected, alpha))
+        self.process_children(node)
+        self.effects.pop()
+
+    def parse_bloom(self, node):
+        self.effects.append(Bloom)
         self.process_children(node)
         self.effects.pop()
 

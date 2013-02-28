@@ -36,6 +36,7 @@ MISSILE_SCALE = .33
 MISSILE_OFFSET = [0, 6, 2.5]
 MISSILE_LIFESPAN = 600
 
+
 class WorldObject (object):
     """
     Base class for anything attached to a World.
@@ -184,6 +185,11 @@ class Effect (object):
            down the effect chain if they are not defined in the effect object"""
         return getattr(self.effected, name)
 
+class Bloom (Effect):
+    def create_node(self):
+        node = self.effected.create_node()
+        node.set_shader_auto(101)
+        return node
 
 class Hologram (Effect):
     collide_bits = NO_COLLISION_BITS
@@ -211,7 +217,7 @@ class Transparent (Effect):
     def create_node(self):
         node = self.effected.create_node()
         node.setTwoSided(True)
-        node.setDepthWrite(False) 
+        node.setDepthWrite(False)
         node.set_transparency(TransparencyAttrib.MAlpha)
         node.setTwoSided(True)
         node.setDepthWrite(False)
@@ -254,7 +260,7 @@ class Hector (PhysicalObject):
         self.energy = 1.0
         self.left_gun_charge = 1.0
         self.right_gun_charge = 1.0
-        
+
     def create_node(self):
         from direct.actor.Actor import Actor
         self.actor = Actor('hector.egg')
@@ -379,13 +385,13 @@ class Hector (PhysicalObject):
                            )
 
         self.walk_forward_seq = make_walk_sequence()
-        
+
         self.left_barrel_end = self.actor.attach_new_node("hector_barrel_node_left")
         self.left_barrel_end.set_pos(self.left_barrel_end, .31, 1.6, .82)
-        
+
         self.right_barrel_end = self.actor.attach_new_node("hector_barrel_node_right")
         self.right_barrel_end.set_pos(self.right_barrel_end, -.31, 1.6,.82)
-        
+
         self.loaded_missile = load_model('missile.egg')
         self.loaded_missile.set_scale(MISSILE_SCALE)
         self.body = self.loaded_missile.find('**/bodywings')
@@ -397,7 +403,7 @@ class Hector (PhysicalObject):
         self.main_engines.set_color(.2,.2,.2)
         self.wing_engines.set_color(.2,.2,.2)
         self.loaded_missile.hide()
-        
+
         self.actor.set_pos(*self.spawn_point.pos)
         self.actor.look_at(*self.spawn_point.heading)
         return self.actor
@@ -514,7 +520,7 @@ class Hector (PhysicalObject):
             hpr = self.actor.get_hpr()
             hpr += self.head.get_hpr()
             plasma = self.world.attach(Plasma(origin, hpr, p_energy))
-    
+
     def update(self, dt):
         dt = min(dt, 0.2) # let's just temporarily assume that if we're getting less than 5 fps, dt must be wrong.
         yaw = self.movement['left'] + self.movement['right']
@@ -559,20 +565,20 @@ class Hector (PhysicalObject):
             new_pos_ts = TransformState.make_pos(self.position() + self.head_height)
             sweep_result = self.world.physics.sweepTestClosest(self.hector_capsule_shape, cur_pos_ts, new_pos_ts, self.collides_with, 0)
             count += 1
-            
-        if self.energy > HECTOR_MIN_CHARGE_ENERGY:        
+
+        if self.energy > HECTOR_MIN_CHARGE_ENERGY:
             if self.left_gun_charge < 1:
                 self.energy -= HECTOR_ENERGY_TO_GUN_CHARGE[0]
                 self.left_gun_charge += HECTOR_ENERGY_TO_GUN_CHARGE[1]
             else:
                 self.left_gun_charge = math.floor(self.left_gun_charge)
-            
+
             if self.right_gun_charge < 1:
                 self.energy -= HECTOR_ENERGY_TO_GUN_CHARGE[0]
                 self.right_gun_charge += HECTOR_ENERGY_TO_GUN_CHARGE[1]
             else:
                 self.right_gun_charge = math.floor(self.right_gun_charge)
-                
+
         if self.energy < 1:
             self.energy += HECTOR_RECHARGE_FACTOR * (dt)
         #print "energy: ", self.energy, " right_gun: ", self.right_gun_charge, " left_gun: ", self.left_gun_charge
@@ -848,13 +854,14 @@ class Goody (PhysicalObject):
                self.node.hide()
 
 class Plasma (PhysicalObject):
+
     def __init__(self, pos, hpr, energy):
         self.name = "plasma"+(''.join(random.choice(string.digits) for x in range(5)))
         self.pos = Vec3(*pos)
         self.hpr = hpr
         self.energy = energy
         self.age = 0
-    
+
     def create_node(self):
         m = load_model('plasma.egg')
         m.set_shader_auto()
@@ -863,15 +870,16 @@ class Plasma (PhysicalObject):
         p.setColor(.9*cf,.5*cf,.5*cf)
         m.set_scale(.5)
         m.set_hpr(180,0,0)
+        m.set_shader_auto(101)
         return m
-        
+
     def create_solid(self):
         node = BulletGhostNode("plasma")
         node_shape = BulletSphereShape(.05)
         node.add_shape(node_shape)
         node.set_kinematic(True)
         return node
-        
+
     def attached(self):
         self.node.set_pos(self.pos)
         self.node.set_hpr(self.hpr)
@@ -880,12 +888,12 @@ class Plasma (PhysicalObject):
         light.set_color(VBase4(.9*cf,0,0,1))
         light.set_attenuation(Point3(0.1, 0.1, 0.8))
         self.light_node = self.node.attach_new_node(light)
-        
+
         self.world.render.set_light(self.light_node)
         self.world.register_updater(self)
         self.world.register_collider(self)
         self.solid.setIntoCollideMask(NO_COLLISION_BITS)
-        
+
     def update(self, dt):
         self.move_by(0,0,(dt*60)/4)
         self.rotate_by(0,0,(dt*60)*3)
@@ -902,7 +910,7 @@ class Missile (PhysicalObject):
         self.hpr = hpr
         self.move_divisor = 9
         self.age = 0
-    
+
     def create_node(self):
         self.model = load_model('missile.egg')
         self.body = self.model.find('**/bodywings')
@@ -914,21 +922,21 @@ class Missile (PhysicalObject):
         self.model.set_scale(MISSILE_SCALE)
         self.model.set_hpr(0,0,0)
         return self.model
-    
+
     def create_solid(self):
         node = BulletGhostNode("missile")
         node_shape = BulletSphereShape(.08)
         node.add_shape(node_shape)
         node.set_kinematic(True)
         return node
-    
+
     def attached(self):
         self.node.set_pos(self.pos)
         self.node.set_hpr(self.hpr)
         self.world.register_updater(self)
         self.world.register_collider(self)
         self.solid.setIntoCollideMask(NO_COLLISION_BITS)
-    
+
     def update(self, dt):
         self.move_by(0,0,(dt*60)/self.move_divisor)
         if self.move_divisor > 2:
@@ -939,7 +947,7 @@ class Missile (PhysicalObject):
         self.age += dt
         if len(result.getContacts()) > 0 or self.age > MISSILE_LIFESPAN:
             self.world.garbage.add(self)
-        
+
 
 class World (object):
     """
@@ -1049,6 +1057,7 @@ class World (object):
         self.celestials.set_transparency(TransparencyAttrib.MAlpha)
         self.celestials.set_light_off()
         self.celestials.set_effect(CompassEffect.make(self.camera, CompassEffect.PPos))
+        self.celestials.set_shader_auto(101)
         self.celestials.node().set_bounds(bounds)
         self.celestials.node().set_final(True)
         self.celestials.reparent_to(self.render)
