@@ -18,7 +18,7 @@ class Pavara (ShowBase):
         self.render.setShaderAuto()
         # Init Panda3D crap.
         self.initP3D()
-        maps = load_maps('Maps/vatnajokull.xml', self.cam)
+        maps = load_maps('Maps/objecttest.xml', self.cam)
         for map in maps:
             print map.name, '--', map.author
         self.map = maps[0]
@@ -56,9 +56,9 @@ class Pavara (ShowBase):
         self.finalcard.reparent_to(render2d)
         self.finalcard.set_attrib(ColorBlendAttrib.make(ColorBlendAttrib.MAdd))
         taskMgr.add(self.map.world.update, 'worldUpdateTask')
-        #base.bufferViewer.setPosition("llcorner")
-        #base.bufferViewer.setLayout("hline")
-        #base.bufferViewer.setCardSize(0.652,0)
+        base.bufferViewer.setPosition("llcorner")
+        base.bufferViewer.setLayout("hline")
+        base.bufferViewer.setCardSize(0.652,0)
         #base.bufferViewer.toggleEnable()
 
         # axes = loader.loadModel('models/yup-axis')

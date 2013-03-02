@@ -188,6 +188,7 @@ class Effect (object):
 class Bloom (Effect):
     def create_node(self):
         node = self.effected.create_node()
+        node.set_light_off()
         node.set_shader_auto(101)
         return node
 
@@ -767,7 +768,7 @@ class Sky (WorldObject):
         ur = bounds.getMax()
         z = dl.getZ() * 0.99
 
-        geom.add_geom(GeomBuilder('sky').add_rect((1, 1, 1, 1), dl.getX(), dl.getY(), 0, ur.getX(), ur.getY(), 0).get_geom())
+        geom.add_geom(GeomBuilder('sky').add_rect((0, 0, 0, 0), dl.getX(), dl.getY(), 0, ur.getX(), ur.getY(), 0).get_geom())
         self.node = self.world.render.attach_new_node(geom)
         self.node.set_shader(Shader.load('Shaders/Sky.sha'))
         self.node.set_shader_input('camera', self.world.camera)
@@ -867,7 +868,8 @@ class Plasma (PhysicalObject):
         m.set_shader_auto()
         p = m.find('**/plasma')
         cf = self.energy
-        p.setColor(.9*cf,.5*cf,.5*cf)
+        p.set_color(.9*cf,.0*cf,.0*cf, 0.75)
+        p.set_light_off()
         m.set_scale(.5)
         m.set_hpr(180,0,0)
         m.set_shader_auto(101)
