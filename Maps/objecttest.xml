@@ -1,10 +1,10 @@
 <?xml version="1.0" standalone="yes" ?>
 <map name="objecttest" debug="false" tagline="Testing for holograms and stuff like that" author="jdawg" description="">
-    <sky color="0.176,0.176,0.528" horizon="0.780,0.780,0.635">
-        <celestial azimuth="150" size="150" elevation="18" color="1,0.1,0" intensity="0.5" visible="true"/>
+    <sky color="0.176,0.176,0.300" horizon="0.780,0.780,0.635">
+        <celestial azimuth="150" size="150" elevation="18" color="1,0.1,0" intensity="0.1" visible="true"/>
         <celestial azimuth="200" elevation="20" color="0,1,1" intensity="0.1" visible="false"/>
     </sky>
-    <ground color="0.231,0.384,0.282"/>
+    <ground color="0.101,0.154,0.122"/>
 
     <!-- INCARNATORS -->
     <incarnator location="2,20,-42" heading="180"/>
@@ -63,8 +63,12 @@
         <block size="2,2,2" center="32,2,15" color="0.231,0.384,0.282"/>
     </static></transparent></hologram>
     <bloom>
-        <transparent alpha="0.4">
 			<block size="5,2.5,5" center="-24,1.25,-24" color="0.8,0.898,1"/>
-        </transparent>
+			<block size="5,2.5,5" center="-30,1.25,-24" color="1,0,0"/>
+			<block size="5,2.5,5" center="-24,1.25,-30" color="0,1,0"/>
+			<block size="5,2.5,5" center="-36,1.25,-24" color="1,1,0"/>
+			<block size="5,2.5,5" center="-24,1.25,-36" color="1,0,1"/>
+			<block size="5,2.5,5" center="-43,1.25,-24" color="0,1,1"/>
+			<block size="5,2.5,5" center="-43,1.25,-36" color="0,0,1"/>
     </bloom>
 </map>
