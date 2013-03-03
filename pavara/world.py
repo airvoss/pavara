@@ -702,6 +702,7 @@ class Ramp (PhysicalObject):
         self.top = Point3(*top)
         self.width = width
         self.thickness = thickness
+        self.__adjust_ends__()
         self.color = color
         self.length = (self.top - self.base).length()
         self.mass = mass
@@ -715,6 +716,46 @@ class Ramp (PhysicalObject):
         self.up = v1.cross(v2)
         self.up.normalize()
         self.midpoint = Point3((self.base + self.top) / 2.0)
+
+    def __quadratic__(self, a, b, c):
+        sqrt = math.sqrt(b**2.0 - 4.0 * a * c)
+        denom = 2.0 * a
+        return (-b - sqrt)/denom, (-b + sqrt)/denom
+
+    def __adjust_ends__(self):
+        SEARCH_ITERATIONS = 20
+        v = self.top - self.base
+        l = v.get_xz().length()
+        h = abs(v.get_y())
+        midx = l / 2.0
+        midy = h / 2.0
+        maxr = v.length() / 2.0
+        minr = max(midx, midy)
+        for i in range(0, SEARCH_ITERATIONS):
+            r = (maxr - minr)/2.0 + minr
+            # r = ((midl - x)**2 + (midh - y)**2)**0.5 substitute 0 for x and solve, then do the same for y. these two values represent the corners of a ramp and the distance between them is thickness.
+            miny, maxy = self.__quadratic__(1, -2 * midy, midx**2 + midy**2 - r ** 2)
+            minx, maxx = self.__quadratic__(1, -2 * midx, midx**2 + midy**2 - r ** 2)
+            d = (minx**2 + miny**2)**0.5
+            if d == self.thickness: # yaaaaay
+                break
+            elif d > self.thickness: # r is too small
+                minr = r
+            else: # r is too large
+                maxr = r
+        # x and y should be pretty close to where we want the corners of the ramp to be. the midpoint between them is where we want the base to be.
+        leftcorner = Point2(0, miny)
+        bottomcorner = Point2(minx, 0)
+        newbase = (leftcorner - bottomcorner)/2 + bottomcorner
+        midramp = Point2(midx, midy)
+        newtop = (midramp - newbase)*2 + newbase
+        topxz = v.get_xz()/l*newtop.get_x()
+        topy = v.get_y()/h*newtop.get_y()
+        self.top = self.base + (topxz[0], topy, topxz[1])
+        bottomxz = v.get_xz()/l*newbase.get_x()
+        bottomy = v.get_y()/h*newbase.get_y()
+        self.base = self.base + (bottomxz[0], bottomy, bottomxz[1])
+
 
     def create_node(self):
         return NodePath(GeomBuilder('ramp').add_block(self.color, (0, 0, 0), (self.thickness, self.width, self.length)).get_geom_node())
