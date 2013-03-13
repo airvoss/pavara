@@ -19,6 +19,7 @@ MAP_COLLIDE_BIT =   BitMask32.bit(0)
 SOLID_COLLIDE_BIT = BitMask32.bit(1)
 GHOST_COLLIDE_BIT = BitMask32.bit(2)
 
+PLASMA_SCALE = .2
 MIN_PLASMA_CHARGE = .4
 HECTOR_RECHARGE_FACTOR = .23
 HECTOR_ENERGY_TO_GUN_CHARGE = (.10,.36)
@@ -32,8 +33,8 @@ MISSILE_ENGINE_COLORS = [
                            ,[247.0/255.0, 76.0/255.0, 42.0/255.0] #brighter red
                         ]
 MISSILE_BODY_COLOR = [42.0/255.0,42.0/255.0,247.0/255.0]
-MISSILE_SCALE = .33
-MISSILE_OFFSET = [0, 6, 2.5]
+MISSILE_SCALE = .2
+MISSILE_OFFSET = [0, 1.9, .58]
 MISSILE_LIFESPAN = 600
 
 
@@ -264,55 +265,59 @@ class Hector (PhysicalObject):
 
     def create_node(self):
         from direct.actor.Actor import Actor
-        self.actor = Actor('hector.egg')
-        #self.actor.listJoints()
-        self.barrels = self.actor.find("**/barrels")
-        self.barrel_trim = self.actor.find("**/barrelTrim")
-        self.visor = self.actor.find("**/visor")
-        self.hull = self.actor.find("**/hull")
-        self.crotch = self.actor.find("**/crotch")
-        self.head = self.actor.attachNewNode("hector_head_node")
-        self.barrels.reparentTo(self.head)
-        self.barrel_trim.reparentTo(self.head)
-        self.visor.reparentTo(self.head)
-        self.hull.reparentTo(self.head)
-        self.crotch.reparentTo(self.head)
-        self.left_top = self.actor.find("**/leftTop")
-        self.right_top = self.actor.find("**/rightTop")
-        self.left_middle = self.actor.find("**/leftMiddle")
-        self.left_middle.reparentTo(self.left_top)
-        self.right_middle = self.actor.find("**/rightMiddle")
-        self.right_middle.reparentTo(self.right_top)
-        self.left_bottom = self.actor.find("**/leftBottom")
-        self.left_bottom.reparentTo(self.left_middle)
-        self.right_bottom = self.actor.find("**/rightBottom")
-        self.right_bottom.reparentTo(self.right_middle)
-
+        self.actor = Actor('walker.egg')
+        def m_expose(obj_name):
+            return self.actor.find("**/%s" % obj_name)
+        self.l_barrel_inner = m_expose("L_barrel_inner")
+        self.l_barrel_outer = m_expose("L_barrel_outer")
+        self.r_barrel_inner = m_expose("R_barrel_inner")
+        self.r_barrel_outer = m_expose("R_barrel_outer")
+        self.visor = m_expose("visor")
+        self.head_primary = m_expose("head_primary")
+        self.head_secondary = m_expose("head_secondary")
+        self.lb_primary = m_expose("LB_leg_primary")
+        self.lb_secondary = m_expose("LB_leg_secondary")
+        self.lt_primary = m_expose("LT_leg_primary")
+        self.lt_secondary = m_expose("LT_leg_secondary")
+        self.rb_primary = m_expose("RB_leg_primary")
+        self.rb_secondary = m_expose("RB_leg_secondary")
+        self.rt_primary = m_expose("RT_leg_primary")
+        self.rt_secondary = m_expose("RT_leg_secondary")
+        self.shoulders_primary = m_expose("shoulders_primary")
+        self.shoulders_secondary = m_expose("shoulders_secondary")
+        self.engines = m_expose("engines")
         self.walk_playing = False
 
         def get_joint_control(name):
             return self.actor.controlJoint(None, "modelRoot", name)
+
         self.right_top_bone = get_joint_control("rightTopBone")
         self.left_top_bone = get_joint_control("leftTopBone")
-        self.right_middle_bone = get_joint_control("rightMidBone")
-        self.left_middle_bone = get_joint_control("leftMidBone")
         self.right_bottom_bone = get_joint_control("rightBottomBone")
         self.left_bottom_bone = get_joint_control("leftBottomBone")
+        self.shoulder_bone = get_joint_control("shoulderBone")
         self.head_bone = get_joint_control("headBone")
+        self.left_foot_bone = get_joint_control("leftFootBone")
+        self.right_foot_bone = get_joint_control("rightFootBone")
 
         def get_joint_expose(name):
             return self.actor.exposeJoint(None, "modelRoot", name)
         self.right_top_bone_joint = get_joint_expose("rightTopBone")
         self.left_top_bone_joint = get_joint_expose("leftTopBone")
-        self.right_middle_bone_joint = get_joint_expose("rightMidBone")
-        self.left_middle_bone_joint = get_joint_expose("leftMidBone")
         self.right_bottom_bone_joint = get_joint_expose("rightBottomBone")
         self.left_bottom_bone_joint = get_joint_expose("leftBottomBone")
+        self.left_foot_joint = get_joint_expose("leftFootBone")
+        self.right_foot_joint = get_joint_expose("rightFootBone")
+        self.shoulder_bone_joint = get_joint_expose("shoulderBone")
         self.head_bone_joint = get_joint_expose("headBone")
+        self.left_barrel_joint = get_joint_expose("leftBarrelBone")
+        self.right_barrel_joint = get_joint_expose("rightBarrelBone")
 
-        self.torso_rest_y = [self.head_bone.get_pos(), self.left_top_bone.get_pos(), self.right_top_bone.get_pos()]
-        self.legs_rest_mat = [ [self.right_top_bone.get_hpr(), self.right_middle_bone.get_hpr(), self.right_bottom_bone.get_hpr()],
-                               [self.left_top_bone.get_hpr(), self.left_middle_bone.get_hpr(), self.left_bottom_bone.get_hpr()] ]
+
+
+        self.torso_rest_y = [self.shoulder_bone.get_pos(), self.left_top_bone.get_pos(), self.right_top_bone.get_pos()]
+        self.legs_rest_mat = [ [self.right_top_bone.get_hpr(), self.right_bottom_bone.get_hpr()],
+                               [self.left_top_bone.get_hpr(), self.left_bottom_bone.get_hpr()] ]
 
         """the below two functions will get called when the interval starts, allowing us to set the base
             positions for crouching/leg extension etc. currently they return the values without modification."""
@@ -326,21 +331,19 @@ class Hector (PhysicalObject):
 
         def make_return_sequence():
             return_speed = .1
-            y_return_head_int = LerpPosInterval(self.head_bone, return_speed, get_base_torso_y(0))
+            y_return_torso_int = LerpPosInterval(self.shoulder_bone, return_speed, get_base_torso_y(0))
             y_return_left_int = LerpPosInterval(self.left_top_bone, return_speed, get_base_torso_y(1))
             y_return_right_int = LerpPosInterval(self.right_top_bone, return_speed, get_base_torso_y(2))
 
             r_top_return_int = LerpHprInterval(self.right_top_bone, return_speed, get_base_leg_rotation(0,0))
-            r_mid_return_int = LerpHprInterval(self.right_middle_bone, return_speed, get_base_leg_rotation(0,1))
-            r_bot_return_int = LerpHprInterval(self.right_bottom_bone, return_speed, get_base_leg_rotation(0,2))
+            r_bot_return_int = LerpHprInterval(self.right_bottom_bone, return_speed, get_base_leg_rotation(0,1))
 
             l_top_return_int = LerpHprInterval(self.left_top_bone, return_speed, get_base_leg_rotation(1,0))
-            l_mid_return_int = LerpHprInterval(self.left_middle_bone, return_speed, get_base_leg_rotation(1,1))
-            l_bot_return_int = LerpHprInterval(self.left_bottom_bone, return_speed, get_base_leg_rotation(1,2))
+            l_bot_return_int = LerpHprInterval(self.left_bottom_bone, return_speed, get_base_leg_rotation(1,1))
 
-            return Parallel(r_top_return_int, r_mid_return_int, r_bot_return_int,
-                            l_top_return_int, l_mid_return_int, l_bot_return_int,
-                            y_return_head_int, y_return_left_int, y_return_right_int)
+            return Parallel(r_top_return_int, r_bot_return_int,
+                            l_top_return_int, l_bot_return_int,
+                            y_return_torso_int, y_return_left_int, y_return_right_int)
 
         self.return_seq = make_return_sequence()
 
@@ -348,59 +351,52 @@ class Hector (PhysicalObject):
         def make_walk_sequence():
             walk_cycle_speed = .8
 
-            upbob = Vec3(0, 0.03, 0)
+            upbob = Vec3(0, 0.05, 0)
             downbob = upbob * -1
-            bob_parts = (self.head_bone, self.left_top_bone, self.right_top_bone)
+            bob_parts = (self.shoulder_bone, self.left_top_bone, self.right_top_bone)
 
             down_interval = [LerpPosInterval(bone, walk_cycle_speed/4.0, get_base_torso_y(idx, downbob)) for (idx, bone) in enumerate(bob_parts)]
             up_interval = [LerpPosInterval(bone, walk_cycle_speed/4.0, get_base_torso_y(idx, upbob)) for (idx, bone) in enumerate(bob_parts)]
 
-            top_motion = [Vec3(0, p, 0) for p in    [ 30, -5, -40,  28]]
-            mid_motion = [Vec3(0, p, 0) for p in    [ 20,  0,  -4, -10]]
-            bottom_motion = [Vec3(0, p, 0) for p in [-50,  5,  44, -18]]
+            #TODO: We definitely need more than four segments in the walk loop.
+            # We also need to have separate loops for backwards and forwards walking.
+            top_motion = [Vec3(0, p, 0) for p in    [ 50, -5, -60,  0]]
+            bottom_motion = [Vec3(0, p, 0) for p in [ 20,  -40,  -10, -18]]
 
-            right_bones = [self.right_top_bone, self.right_middle_bone, self.right_bottom_bone]
-            left_bones = [self.left_top_bone, self.left_middle_bone, self.left_bottom_bone]
+            right_bones = [self.right_top_bone, self.right_bottom_bone]
+            left_bones = [self.left_top_bone, self.left_bottom_bone]
 
             right_top_forward = [LerpHprInterval(right_bones[0], walk_cycle_speed/4.0, get_base_leg_rotation(0, 0, motion)) for motion in top_motion]
-            right_mid_forward = [LerpHprInterval(right_bones[1], walk_cycle_speed/4.0, get_base_leg_rotation(0, 1, motion)) for motion in mid_motion]
-            right_bottom_forward = [LerpHprInterval(right_bones[2], walk_cycle_speed/4.0, get_base_leg_rotation(0, 2, motion)) for motion in bottom_motion]
+            right_bottom_forward = [LerpHprInterval(right_bones[1], walk_cycle_speed/4.0, get_base_leg_rotation(0, 1, motion)) for motion in bottom_motion]
 
             left_top_forward = [LerpHprInterval(left_bones[0], walk_cycle_speed/4.0, get_base_leg_rotation(1, 0, motion)) for motion in top_motion]
-            left_mid_forward = [LerpHprInterval(left_bones[1], walk_cycle_speed/4.0, get_base_leg_rotation(1, 1, motion)) for motion in mid_motion]
-            left_bottom_forward = [LerpHprInterval(left_bones[2], walk_cycle_speed/4.0, get_base_leg_rotation(1, 2, motion)) for motion in bottom_motion]
+            left_bottom_forward = [LerpHprInterval(left_bones[1], walk_cycle_speed/4.0, get_base_leg_rotation(1, 1, motion)) for motion in bottom_motion]
 
             return Sequence(
-                            Parallel(right_top_forward[0], right_mid_forward[0], right_bottom_forward[0],
-                                    left_top_forward[2], left_mid_forward[2], left_bottom_forward[2],
+                            Parallel(right_top_forward[0], right_bottom_forward[0],
+                                    left_top_forward[2], left_bottom_forward[2],
                                     down_interval[0], down_interval[1], down_interval[2]),
-                            Parallel(right_top_forward[1], right_mid_forward[1], right_bottom_forward[1],
-                                    left_top_forward[3], left_mid_forward[3], left_bottom_forward[3],
+                            Parallel(right_top_forward[1], right_bottom_forward[1],
+                                    left_top_forward[3], left_bottom_forward[3],
                                     up_interval[0], up_interval[1], up_interval[2]),
-                            Parallel(right_top_forward[2], right_mid_forward[2], right_bottom_forward[2],
-                                    left_top_forward[0], left_mid_forward[0], left_bottom_forward[0],
+                            Parallel(right_top_forward[2], right_bottom_forward[2],
+                                    left_top_forward[0], left_bottom_forward[0],
                                     down_interval[0], down_interval[1], down_interval[2]),
-                            Parallel(right_top_forward[3], right_mid_forward[3], right_bottom_forward[3],
-                                    left_top_forward[1], left_mid_forward[1], left_bottom_forward[1],
+                            Parallel(right_top_forward[3], right_bottom_forward[3],
+                                    left_top_forward[1], left_bottom_forward[1],
                                     up_interval[0], up_interval[1], up_interval[2]),
                            )
 
         self.walk_forward_seq = make_walk_sequence()
 
-        self.left_barrel_end = self.actor.attach_new_node("hector_barrel_node_left")
-        self.left_barrel_end.set_pos(self.left_barrel_end, .31, 1.6, .82)
-
-        self.right_barrel_end = self.actor.attach_new_node("hector_barrel_node_right")
-        self.right_barrel_end.set_pos(self.right_barrel_end, -.31, 1.6,.82)
-
         self.loaded_missile = load_model('missile.egg')
-        self.loaded_missile.set_scale(MISSILE_SCALE)
         self.body = self.loaded_missile.find('**/bodywings')
         self.body.set_color(*MISSILE_BODY_COLOR)
         self.main_engines = self.loaded_missile.find('**/mainengines')
         self.wing_engines = self.loaded_missile.find('**/wingengines')
-        self.loaded_missile.reparentTo(self.head)
+        self.loaded_missile.reparentTo(self.actor)
         self.loaded_missile.set_pos(self.loaded_missile, *MISSILE_OFFSET)
+        self.loaded_missile.set_scale(MISSILE_SCALE)
         self.main_engines.set_color(.2,.2,.2)
         self.wing_engines.set_color(.2,.2,.2)
         self.loaded_missile.hide()
@@ -436,38 +432,36 @@ class Hector (PhysicalObject):
         self.world.physics.attach_rigid_body(node)
         return np
 
-    def setupColor(self, colordict):
-        if colordict.has_key("barrel_color"):
-            self.barrels.setColor(*colordict.get("barrel_color"))
-        if colordict.has_key("barrel_trim_color"):
-            self.barrel_trim.setColor(*colordict.get("barrel_trim_color"))
+    def setup_color(self, colordict):
+        if colordict.has_key("barrel_outer_color"):
+            color = colordict.get("barrel_outer_color")
+            self.l_barrel_outer.setColor(*color)
+            self.r_barrel_outer.setColor(*color)
+        if colordict.has_key("barrel_inner_color"):
+            color = colordict.get("barrel_inner_color")
+            self.l_barrel_inner.setColor(*color)
+            self.r_barrel_inner.setColor(*color)
         if colordict.has_key("visor_color"):
             self.visor.setColor(*colordict.get("visor_color"))
-        if colordict.has_key("body_color"):
-            color = colordict.get("body_color")
-            self.hull.setColor(*color)
-            self.crotch.setColor(*color)
-            self.left_top.setColor(*color)
-            self.right_top.setColor(*color)
-            self.left_middle.setColor(*color)
-            self.right_middle.setColor(*color)
-            self.left_bottom.setColor(*color)
-            self.right_bottom.setColor(*color)
-        if colordict.has_key("hull_color"):
-            self.hull.setColor(*colordict.get("hull_color"))
-            self.crotch.setColor(*colordict.get("hull_color"))
-        if colordict.has_key("top_leg_color"):
-            color = colordict.get("top_leg_color")
-            self.left_top.setColor(*color)
-            self.right_top.setColor(*color)
-        if colordict.has_key("middle_leg_color"):
-            color = colordict.get("middle_leg_color")
-            self.left_middle.setColor(*color)
-            self.right_middle.setColor(*color)
-        if colordict.has_key("bottom_leg_color"):
-            color = colordict.get("bottom_leg_color")
-            self.left_bottom.setColor(*color)
-            self.right_bottom.setColor(*color)
+        if colordict.has_key("body_primary_color"):
+            color = colordict.get("body_primary_color")
+            self.head_primary.setColor(*color)
+            self.shoulders_primary.setColor(*color)
+            self.lt_primary.setColor(*color)
+            self.rt_primary.setColor(*color)
+            self.lb_primary.setColor(*color)
+            self.rb_primary.setColor(*color)
+        if colordict.has_key("body_secondary_color"):
+            color = colordict.get("body_secondary_color")
+            self.head_secondary.setColor(*color)
+            self.shoulders_secondary.setColor(*color)
+            self.lt_secondary.setColor(*color)
+            self.rt_secondary.setColor(*color)
+            self.lb_secondary.setColor(*color)
+            self.rb_secondary.setColor(*color)
+        if colordict.has_key("engines"):
+            color = colordict.get("engines")
+            self.engines.setColor(*color)
         return
 
     def attached(self):
@@ -497,8 +491,8 @@ class Hector (PhysicalObject):
     def handle_fire(self):
         if self.missile_loaded:
             origin = self.loaded_missile.get_pos(self.world.render)
-            hpr = self.actor.get_hpr()
-            hpr += self.head.get_hpr()
+            hpr = self.shoulder_bone.get_hpr(self.world.render)
+            #hpr += head_angle
             missile = self.world.attach(Missile(origin, hpr))
             self.missile_loaded = False
             self.loaded_missile.hide()
@@ -506,20 +500,23 @@ class Hector (PhysicalObject):
             pass
         else:
             p_energy = 0
+            hpr = 0
             if self.left_gun_charge > self.right_gun_charge:
-                origin = self.left_barrel_end.get_pos(self.world.render)
+                origin = self.left_barrel_joint.get_pos(self.world.render)
+                hpr = self.left_barrel_joint.get_hpr(self.world.render)
                 p_energy = self.left_gun_charge
                 if p_energy < MIN_PLASMA_CHARGE:
                     return
                 self.left_gun_charge = 0
             else:
-                origin = self.right_barrel_end.get_pos(self.world.render)
+                origin = self.right_barrel_joint.get_pos(self.world.render)
+                hpr = self.right_barrel_joint.get_hpr(self.world.render)
                 p_energy = self.right_gun_charge
                 if p_energy < MIN_PLASMA_CHARGE:
                     return
                 self.right_gun_charge = 0
-            hpr = self.actor.get_hpr()
-            hpr += self.head.get_hpr()
+
+            hpr.y += 180
             plasma = self.world.attach(Plasma(origin, hpr, p_energy))
 
     def update(self, dt):
@@ -601,7 +598,7 @@ class Hector (PhysicalObject):
 
 class Block (PhysicalObject):
     """
-    A block. Blocks with non-zero mass will be treated as freesolids.
+    A block.
     """
 
     def __init__(self, size, color, mass, center, hpr, name=None):
@@ -632,23 +629,26 @@ class Block (PhysicalObject):
         self.move(self.center)
         self.rotate(*self.hpr)
 
-class Dome (PhysicalObject):
+class Ramp (PhysicalObject):
     """
-    A dome.
+    A ramp.
     """
 
-    def __init__(self, radius, samples, planes, color, mass, center, hpr, name=None):
-        super(Dome, self).__init__(name)
-        self.radius = radius
-        self.samples = samples
-        self.planes = planes
+    def __init__(self, base, top, width, thickness, color, mass, hpr, name=None):
+        super(Ramp, self).__init__(name)
+        self.base = Point3(*base)
+        self.top = Point3(*top)
+        self.width = width
+        self.thickness = thickness
         self.color = color
         self.mass = mass
-        self.center = center
         self.hpr = hpr
+        self.midpoint = Point3((self.base + self.top) / 2.0)
 
     def create_node(self):
-        self.geom = GeomBuilder().add_dome(self.color, (0, 0, 0), self.radius, self.samples, self.planes).get_geom_node()
+        rel_base = Point3(self.base - (self.midpoint - Point3(0, 0, 0)))
+        rel_top = Point3(self.top - (self.midpoint - Point3(0, 0, 0)))
+        self.geom = GeomBuilder().add_ramp(self.color, rel_base, rel_top, self.width, self.thickness).get_geom_node()
         return NodePath(self.geom)
 
     def create_solid(self):
@@ -660,44 +660,66 @@ class Dome (PhysicalObject):
 
     def add_solid(self, node):
         mesh = BulletConvexHullShape()
-        mesh.add_geom(GeomBuilder().add_dome(self.color, self.center, self.radius, self.samples, self.planes).get_geom())
+        mesh.add_geom(GeomBuilder().add_ramp(self.color, self.base, self.top, self.width, self.thickness, LRotationf(*self.hpr)).get_geom())
         node.add_shape(mesh)
         return node
 
     def add_to(self, geom_builder):
-        rot = LRotationf(*self.hpr)
-        geom_builder.add_dome(self.color, self.center, self.radius, self.samples, self.planes, rot)
+        geom_builder.add_ramp(self.color, self.base, self.top, self.width, self.thickness, LRotationf(*self.hpr))
 
     def attached(self):
-        self.move(self.center)
-        self.rotate_by(*self.hpr)
+        self.move(self.midpoint)
+        self.rotate(*self.hpr)
 
-class Ground (PhysicalObject):
+class Wedge (PhysicalObject):
     """
-    The ground. This is not a visible object, but does create a physical solid.
+    Ramps with some SERIOUS 'tude.
     """
 
-    def __init__(self, radius, color, name=None):
-        super(Ground, self).__init__(name)
+    def __init__(self, base, top, width, color, mass, hpr, name=None):
+        super(Wedge, self).__init__(name)
+        self.base = Point3(*base)
+        self.top = Point3(*top)
+        self.width = width
         self.color = color
+        self.mass = mass
+        self.hpr = hpr
+        self.midpoint = Point3((self.base + self.top) / 2.0)
+
+    def create_node(self):
+        rel_base = Point3(self.base - (self.midpoint - Point3(0, 0, 0)))
+        rel_top = Point3(self.top - (self.midpoint - Point3(0, 0, 0)))
+        self.geom = GeomBuilder().add_wedge(self.color, rel_base, rel_top, self.width).get_geom_node()
+        return NodePath(self.geom)
 
     def create_solid(self):
         node = BulletRigidBodyNode(self.name)
-        node.add_shape(BulletPlaneShape(Vec3(0, 1, 0), 1))
+        mesh = BulletConvexHullShape()
+        mesh.add_geom(self.geom.get_geom(0))
+        node.add_shape(mesh)
         return node
 
-    def attached(self):
-        self.move((0, -1.0, 0))
-        # We need to tell the sky shader what color we are.
-        self.world.sky.set_ground(self.color)
+    def add_solid(self, node):
+        mesh = BulletConvexHullShape()
+        mesh.add_geom(GeomBuilder().add_wedge(self.color, self.base, self.top, self.width, LRotationf(*self.hpr)).get_geom())
+        node.add_shape(mesh)
+        return node
 
-class Ramp (PhysicalObject):
+    def add_to(self, geom_builder):
+        geom_builder.add_wedge(self.color, self.base, self.top, self.width, LRotationf(*self.hpr))
+
+    def attached(self):
+        self.move(self.midpoint)
+        self.rotate(*self.hpr)
+
+class BlockRamp (PhysicalObject):
     """
-    A ramp. Basically a block that is rotated, and specified differently in XML. Should maybe be a Block subclass?
+    Old-style ramps like in the original game. Basically just a block that is
+    rotated, and specified differently in XML. Should maybe be a Block subclass?
     """
 
     def __init__(self, base, top, width, thickness, color, mass, hpr, name=None):
-        super(Ramp, self).__init__(name)
+        super(BlockRamp, self).__init__(name)
         self.base = Point3(*base)
         self.top = Point3(*top)
         self.width = width
@@ -790,58 +812,45 @@ class Ramp (PhysicalObject):
         self.node.look_at(self.top, self.up)
         self.rotate_by(*self.hpr)
 
-class Sky (WorldObject):
+class Dome (PhysicalObject):
     """
-    The sky is actually just a square re-parented onto the camera, with a shader to handle the coloring and gradient.
+    A dome.
     """
 
-    def __init__(self, ground=DEFAULT_GROUND_COLOR, color=DEFAULT_SKY_COLOR, horizon=DEFAULT_HORIZON_COLOR, scale=DEFAULT_HORIZON_SCALE):
-        super(Sky, self).__init__('sky')
-        self.ground = ground
+    def __init__(self, radius, samples, planes, color, mass, center, hpr, name=None):
+        super(Dome, self).__init__(name)
+        self.radius = radius
+        self.samples = samples
+        self.planes = planes
         self.color = color
-        self.horizon = horizon
-        self.scale = scale
+        self.mass = mass
+        self.center = center
+        self.hpr = hpr
+
+    def create_node(self):
+        self.geom = GeomBuilder().add_dome(self.color, (0, 0, 0), self.radius, self.samples, self.planes).get_geom_node()
+        return NodePath(self.geom)
+
+    def create_solid(self):
+        node = BulletRigidBodyNode(self.name)
+        mesh = BulletConvexHullShape()
+        mesh.add_geom(self.geom.get_geom(0))
+        node.add_shape(mesh)
+        return node
+
+    def add_solid(self, node):
+        mesh = BulletConvexHullShape()
+        mesh.add_geom(GeomBuilder().add_dome(self.color, self.center, self.radius, self.samples, self.planes, LRotationf(*self.hpr)).get_geom())
+        node.add_shape(mesh)
+        return node
+
+    def add_to(self, geom_builder):
+        rot = LRotationf(*self.hpr)
+        geom_builder.add_dome(self.color, self.center, self.radius, self.samples, self.planes, rot)
 
     def attached(self):
-        geom = GeomNode('sky')
-        bounds = self.world.camera.node().get_lens().make_bounds()
-        dl = bounds.getMin()
-        ur = bounds.getMax()
-        z = dl.getZ() * 0.99
-
-        geom.add_geom(GeomBuilder('sky').add_rect((0, 0, 0, 0), dl.getX(), dl.getY(), 0, ur.getX(), ur.getY(), 0).get_geom())
-        self.node = self.world.render.attach_new_node(geom)
-        self.node.set_shader(Shader.load('Shaders/Sky.sha'))
-        self.node.set_shader_input('camera', self.world.camera)
-        self.node.set_shader_input('sky', self.node)
-        self.node.set_shader_input('groundColor', *self.ground)
-        self.node.set_shader_input('skyColor', *self.color)
-        self.node.set_shader_input('horizonColor', *self.horizon)
-        self.node.set_shader_input('gradientHeight', self.scale, 0, 0, 0)
-        self.node.reparent_to(self.world.camera)
-        self.node.set_pos(self.world.camera, 0, 0, z)
-
-    def set_ground(self, color):
-        self.ground = color
-        self.node.set_shader_input('groundColor', *self.ground)
-
-    def set_color(self, color):
-        self.color = color
-        self.node.set_shader_input('skyColor', *self.color)
-
-    def set_horizon(self, color):
-        self.horizon = color
-        self.node.set_shader_input('horizonColor', *self.horizon)
-
-    def set_scale(self, height):
-        self.scale = height
-        self.node.set_shader_input('gradientHeight', self.scale, 0, 0, 0)
-
-class Incarnator (WorldObject):
-    def __init__(self, pos, heading, name=None):
-        super(Incarnator, self).__init__(name)
-        self.pos = Vec3(*pos)
-        self.heading = Vec3(to_cartesian(math.radians(heading), 0, 1000.0 * 255.0 / 256.0)) * -1
+        self.move(self.center)
+        self.rotate_by(*self.hpr)
 
 class Goody (PhysicalObject):
     def __init__(self, pos, model, items, respawn, spin, name=None):
@@ -851,8 +860,8 @@ class Goody (PhysicalObject):
         self.missiles = items[1]
         self.boosters = items[2]
         self.model = model
-        self.respawn = float(respawn)
-        self.spin = spin
+        self.respawn = respawn
+        self.spin = Vec3(*spin)
         self.geom = None
         self.active = True
         self.timeout = 0
@@ -895,6 +904,78 @@ class Goody (PhysicalObject):
                self.active = False
                self.node.hide()
 
+class Sky (WorldObject):
+    """
+    The sky is actually just a square re-parented onto the camera, with a shader to handle the coloring and gradient.
+    """
+
+    def __init__(self, ground=DEFAULT_GROUND_COLOR, color=DEFAULT_SKY_COLOR, horizon=DEFAULT_HORIZON_COLOR, scale=DEFAULT_HORIZON_SCALE):
+        super(Sky, self).__init__('sky')
+        self.ground = ground
+        self.color = color
+        self.horizon = horizon
+        self.scale = scale
+
+    def attached(self):
+        geom = GeomNode('sky')
+        bounds = self.world.camera.node().get_lens().make_bounds()
+        dl = bounds.getMin()
+        ur = bounds.getMax()
+        z = dl.getZ() * 0.99
+
+        geom.add_geom(GeomBuilder('sky').add_rect((1, 1, 1, 1), dl.getX(), dl.getY(), 0, ur.getX(), ur.getY(), 0).get_geom())
+        self.node = self.world.render.attach_new_node(geom)
+        self.node.set_shader(Shader.load('Shaders/Sky.sha'))
+        self.node.set_shader_input('camera', self.world.camera)
+        self.node.set_shader_input('sky', self.node)
+        self.node.set_shader_input('groundColor', *self.ground)
+        self.node.set_shader_input('skyColor', *self.color)
+        self.node.set_shader_input('horizonColor', *self.horizon)
+        self.node.set_shader_input('gradientHeight', self.scale, 0, 0, 0)
+        self.node.reparent_to(self.world.camera)
+        self.node.set_pos(self.world.camera, 0, 0, z)
+
+    def set_ground(self, color):
+        self.ground = color
+        self.node.set_shader_input('groundColor', *self.ground)
+
+    def set_color(self, color):
+        self.color = color
+        self.node.set_shader_input('skyColor', *self.color)
+
+    def set_horizon(self, color):
+        self.horizon = color
+        self.node.set_shader_input('horizonColor', *self.horizon)
+
+    def set_scale(self, height):
+        self.scale = height
+        self.node.set_shader_input('gradientHeight', self.scale, 0, 0, 0)
+
+class Ground (PhysicalObject):
+    """
+    The ground. This is not a visible object, but does create a physical solid.
+    """
+
+    def __init__(self, radius, color, name=None):
+        super(Ground, self).__init__(name)
+        self.color = color
+
+    def create_solid(self):
+        node = BulletRigidBodyNode(self.name)
+        node.add_shape(BulletPlaneShape(Vec3(0, 1, 0), 1))
+        return node
+
+    def attached(self):
+        self.move((0, -1.0, 0))
+        # We need to tell the sky shader what color we are.
+        self.world.sky.set_ground(self.color)
+
+class Incarnator (WorldObject):
+    def __init__(self, pos, heading, name=None):
+        super(Incarnator, self).__init__(name)
+        self.pos = Vec3(*pos)
+        self.heading = Vec3(to_cartesian(math.radians(heading), 0, 1000.0 * 255.0 / 256.0)) * -1
+
 class Plasma (PhysicalObject):
 
     def __init__(self, pos, hpr, energy):
@@ -911,7 +992,7 @@ class Plasma (PhysicalObject):
         cf = self.energy
         p.set_color(.9*cf,.0*cf,.0*cf, 0.75)
         p.set_light_off()
-        m.set_scale(.5)
+        m.set_scale(PLASMA_SCALE)
         m.set_hpr(180,0,0)
         m.set_shader_auto(101)
         return m

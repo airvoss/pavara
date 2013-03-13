@@ -18,7 +18,7 @@ class Pavara (ShowBase):
         self.render.setShaderAuto()
         # Init Panda3D crap.
         self.initP3D()
-        maps = load_maps('Maps/bwadi.xml', self.cam)
+        maps = load_maps('Maps/objecttest.xml', self.cam)
         for map in maps:
             print map.name, '--', map.author
         self.map = maps[0]
@@ -26,9 +26,15 @@ class Pavara (ShowBase):
         # Testing physical hector.
         incarn = self.map.world.get_incarn()
         self.hector = self.map.world.attach(Hector(incarn))
-        self.hector.setupColor({"barrel_color": Vec3(.7,.7,.7),
-            "barrel_trim_color": Vec3(.2,.2,.2), "visor_color": Vec3(.3,.6,1),
-            "body_color":Vec3(.6,.2,.2)})
+
+        self.hector.setup_color({
+            "barrel_outer_color": [.7,.7,.7],
+            "barrel_inner_color": [.2,.2,.2],
+            "visor_color": [2.0/255, 94.0/255, 115.0/255],
+            "body_primary_color": [3.0/255, 127.0/255, 140.0/255],
+            "body_secondary_color": [217.0/255, 213.0/255, 154.0/255],
+            "engines": [89.0/255, 2.0/255, 2.0/255]
+        })
 
         self.setupInput()
 
