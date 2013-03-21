@@ -633,7 +633,7 @@ class Plasma (PhysicalObject):
         m.set_shader_auto()
         p = m.find('**/plasma')
         cf = self.energy
-        p.setColor(1,(150/255.0)*cf,(150/255.0)*cf)
+        p.setColor(0.9,(1 - cf) * 150.0/255.0, (1 - cf) * 150.0/255.0)
         p.set_light_off()
         m.set_scale(PLASMA_SCALE)
         m.set_hpr(180,0,0)
@@ -670,7 +670,7 @@ class Plasma (PhysicalObject):
             #self.world.render.clear_light(self.light_node)
             self.world.garbage.add(self)
             cf = self.energy
-            expl = self.world.attach(TriangleExplosion(self.node.get_pos(self.world.render), 5, size=.1, color=[1,(150/255.0)*cf,(150/255.0)*cf, 1]))
+            expl = self.world.attach(TriangleExplosion(self.node.get_pos(self.world.render), 5, size=.1, color=[0.9,(1 - cf) * 150.0/255.0, (1 - cf) * 150.0/255.0, 1]))
 
 class Missile (PhysicalObject):
     def __init__(self, pos, hpr, name=None):
@@ -760,6 +760,8 @@ class Shrapnel (PhysicalObject):
         self.geom = GeomBuilder('tri').add_tri(self.color, [Point3(0,-extent,-extent), Point3(0,extent,extent), Point3(0,-extent,extent)]).get_geom_node()
         self.node = self.world.render.attach_new_node(self.geom)
         self.colorhandle = self.node.find('**/*')
+        self.node.set_shader_auto(101)
+        self.node.set_light_off()
         return self.node
 
     def create_solid(self):
