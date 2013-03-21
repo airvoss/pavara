@@ -670,7 +670,7 @@ class Plasma (PhysicalObject):
         if len(contacts) > 0:
             #self.world.render.clear_light(self.light_node)
             self.world.garbage.add(self)
-            cf = self.energy
+            cf = max(self.energy, 1)
             expl_color = [0.9,(1 - cf) * 150.0/255.0, (1 - cf) * 150.0/255.0, 1]
             expl_pos = self.node.get_pos(self.world.render)
             expl = self.world.attach(TriangleExplosion(expl_pos, 5, size=.1, color=expl_color))
