@@ -3,10 +3,12 @@ from panda3d.core import *
 from pandac.PandaModules import WindowProperties
 from direct.gui.DirectGui import *
 from direct.showbase.ShowBase import ShowBase
+from direct.showbase import Audio3DManager
 from direct.filter.CommonFilters import CommonFilters
 
 from pavara.maps import load_maps
-from pavara.world import Block, FreeSolid, Hector
+from pavara.world import Block, FreeSolid
+from pavara.hector import Hector
 
 
 class Pavara (ShowBase):
@@ -16,9 +18,10 @@ class Pavara (ShowBase):
         self.y = None
 
         self.render.setShaderAuto()
-        # Init Panda3D crap.
         self.initP3D()
-        maps = load_maps('Maps/objecttest.xml', self.cam)
+        self.audio3d = Audio3DManager.Audio3DManager(self.sfxManagerList[0], self.cam)
+        maps = load_maps('Maps/bodhi.xml', self.cam, audio3d=self.audio3d)
+
         for map in maps:
             print map.name, '--', map.author
         self.map = maps[0]
@@ -73,9 +76,7 @@ class Pavara (ShowBase):
 
     def initP3D(self):
         self.setBackgroundColor(0, 0, 0)
-        #self.enableParticles()
         self.disableMouse()
-        #self.filters.setBloom()
         render.setAntialias(AntialiasAttrib.MAuto)
         props = WindowProperties()
         props.setCursorHidden(True)
