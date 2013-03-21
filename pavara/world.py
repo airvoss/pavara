@@ -636,7 +636,6 @@ class Plasma (PhysicalObject):
         p.setColor(0.9,(1 - cf) * 150.0/255.0, (1 - cf) * 150.0/255.0)
         p.set_light_off()
         m.set_scale(PLASMA_SCALE)
-        m.set_hpr(180,0,0)
         m.set_shader_auto(101)
         return m
 
