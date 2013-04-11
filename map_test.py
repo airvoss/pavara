@@ -81,6 +81,7 @@ class MapTest (ShowBase):
         #blackout card
         bgeom = GeomBuilder().add_rect([0,0,0,1],-5,-5,0,5,5,0).get_geom_node()
         b = render.attach_new_node(bgeom)
+        b.set_shader_auto(101)
         b.set_pos(self.cam.get_pos(render))
         b.set_hpr(self.cam.get_hpr(render))
         b_move_by = render.get_relative_vector(self.cam, Vec3(0,0,-2))
