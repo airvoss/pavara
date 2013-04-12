@@ -41,7 +41,6 @@
         <block size="2,4,2" center="16,20,0" color="0.231,0.384,0.282"/>
         <dome center="-11,20,0" radius="6" color="0.812,0.953,0.859" />
     </freesolid>
-    <!-- lawl -->
     <hologram><freesolid mass="2">
         <ramp base="0,0,-44" top="0,40,-18" width="12" color="1,1,0.863"/>
         <block size="2,2,2" center="3,50,-30" color="0.231,0.384,0.282"/>
@@ -64,12 +63,12 @@
         <block size="2,2,2" center="32,2,15" color="0.231,0.384,0.282"/>
     </static></transparent></hologram>
     <bloom>
-			<block size="5,2.5,5" center="-24,1.25,-24" color="0.8,0.898,1"/>
 			<block size="5,2.5,5" center="-30,1.25,-24" color="1,0,0"/>
 			<block size="5,2.5,5" center="-24,1.25,-30" color="0,1,0"/>
-			<block size="5,2.5,5" center="-36,1.25,-24" color="1,1,0"/>
-			<block size="5,2.5,5" center="-24,1.25,-36" color="1,0,1"/>
 			<block size="5,2.5,5" center="-43,1.25,-24" color="0,1,1"/>
-			<block size="5,2.5,5" center="-43,1.25,-36" color="0,0,1"/>
+			<block size="5,2.5,5" center="-36,1.25,-24" color="1,1,0"/>
+			<block size="5,2.5,5" center="-43,1.25,-36" color="0,0,1"/> 
+			<block size="5,2.5,5" center="-24,1.25,-36" color="1,0,1"/>
+			<block size="5,2.5,5" center="-24,1.25,-24" color="0.8,0.898,1"/> 
     </bloom>
 </map>

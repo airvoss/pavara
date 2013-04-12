@@ -1,0 +1,84 @@
+<?xml version="1.0" standalone="yes" ?>
+<map name="objecttest" debug="false" tagline="Testing for holograms and stuff like that" author="jdawg" description="">
+    <sky color="0.176,0.176,0.300" horizon="0.780,0.780,0.635">
+        <celestial azimuth="150" size="150" elevation="18" color="1,0.1,0" intensity="0.1" visible="true"/>
+        <celestial azimuth="200" elevation="20" color="0,1,1" intensity="0.1" visible="false"/>
+    </sky>
+    <ground color="0.101,0.154,0.122"/>
+
+    <!-- INCARNATORS -->
+    <incarnator location="2,20,-42" heading="180"/>
+    <incarnator location="-2,20,42" heading="0"/>
+    <incarnator location="42,20,-30" heading="225"/>
+    <incarnator location="-42,20,30" heading="45"/>
+    <incarnator location="34,20,30" heading="315"/>
+    <incarnator location="-34,20,-30" heading="135"/>
+    <incarnator location="46,20,2" heading="270"/>
+    <incarnator location="-46,10,-2" heading="90"/>
+
+    <!-- BUBBLE TELEPORTER -->
+    <teleporter location="0,17,0" group="recenter" disorient="false" model=""/>
+    <teleporter location="0,-30,0" activeRadius="200" deadRadius="110" destination="recenter" disorient="false" model=""/>
+
+    <!-- TELEPORTERS -->
+    <teleporter location="38,17,10" group="pillar" disorient="false" model=""/>
+    <teleporter location="-38,17,-10" group="pillar" disorient="false" model=""/>
+
+    <dome center="16, 4, 0" radius="8" color="1,1,1" />
+    <dome center="16, 4, 0" radius="8" pitch="180" color="1,1,1" />
+    <dome center="-16, 4, 0" radius="8" color="1,1,1" />
+    <dome center="-16, 4, 0" radius="8" pitch="180" color="1,1,1" />
+    <bloom>
+        <block size="1,1,1" center="-46.303,0,-51.278" color="0.986,0.918,0.715"/>
+        <block size="1,1,1" center="-53.461,0,27.992" color="0.823,0.850,0.573"/>
+        <block size="1,1,1" center="-6.693,0,-77.650" color="0.809,0.742,0.771"/>
+        <block size="1,1,1" center="-2.413,0,-27.568" color="0.712,0.941,0.976"/>
+        <block size="1,1,1" center="57.314,0,-57.862" color="0.982,0.501,0.718"/>
+        <block size="1,1,1" center="-35.326,0,30.984" color="0.959,0.823,0.570"/>
+        <block size="1,1,1" center="-82.990,0,15.529" color="0.573,0.936,0.938"/>
+        <block size="1,1,1" center="81.213,0,23.459" color="0.928,0.777,0.541"/>
+        <block size="1,1,1" center="-72.888,0,71.745" color="0.509,0.656,0.682"/>
+        <block size="1,1,1" center="-41.906,0,10.324" color="0.538,0.695,0.802"/>
+        <block size="1,1,1" center="83.726,0,-86.895" color="0.547,0.711,0.895"/>
+        <block size="1,1,1" center="-44.502,0,-20.194" color="0.599,0.508,0.517"/>
+        <block size="1,1,1" center="78.558,0,18.859" color="0.535,0.524,0.682"/>
+        <block size="1,1,1" center="89.053,0,-69.663" color="0.579,0.779,0.519"/>
+        <block size="1,1,1" center="-72.271,0,12.910" color="0.918,0.537,0.775"/>
+        <block size="1,1,1" center="33.177,0,10.941" color="0.613,0.971,0.583"/>
+        <block size="1,1,1" center="-85.562,0,-84.588" color="0.691,0.533,0.875"/>
+        <block size="1,1,1" center="-84.375,0,13.727" color="0.794,0.784,0.864"/>
+        <block size="1,1,1" center="-92.927,0,42.413" color="0.936,0.835,0.854"/>
+        <block size="1,1,1" center="-17.219,0,-35.760" color="0.574,0.983,0.828"/>
+        <block size="1,1,1" center="98.857,0,65.907" color="0.629,0.515,0.802"/>
+        <block size="1,1,1" center="41.008,0,-12.238" color="0.910,0.817,0.612"/>
+        <block size="1,1,1" center="54.549,0,17.095" color="0.552,0.753,0.778"/>
+        <block size="1,1,1" center="-85.415,0,43.968" color="0.561,0.513,0.949"/>
+        <block size="1,1,1" center="96.060,0,39.630" color="0.935,0.503,0.973"/>
+        <block size="1,1,1" center="-50.552,0,92.083" color="0.835,0.996,0.501"/>
+        <block size="1,1,1" center="-48.681,0,-1.517" color="0.564,0.631,0.719"/>
+        <block size="1,1,1" center="-4.859,0,-33.676" color="0.688,0.627,0.831"/>
+        <block size="1,1,1" center="-53.977,0,-81.919" color="0.689,0.829,0.715"/>
+        <block size="1,1,1" center="44.676,0,-9.336" color="0.928,0.901,0.873"/>
+        <block size="1,1,1" center="-11.937,0,-58.292" color="0.774,0.525,0.658"/>
+        <block size="1,1,1" center="-41.588,0,-59.687" color="0.960,0.946,0.820"/>
+        <block size="1,1,1" center="-39.592,0,-19.032" color="0.984,0.960,0.623"/>
+        <block size="1,1,1" center="13.425,0,69.267" color="0.861,0.872,0.636"/>
+        <block size="1,1,1" center="79.008,0,1.145" color="0.848,0.843,0.922"/>
+        <block size="1,1,1" center="21.168,0,-27.469" color="0.513,0.807,0.603"/>
+        <block size="1,1,1" center="36.463,0,-86.066" color="0.809,0.839,0.994"/>
+        <block size="1,1,1" center="81.848,0,97.304" color="0.619,0.955,0.611"/>
+        <block size="1,1,1" center="25.481,0,33.470" color="0.973,0.997,0.763"/>
+        <block size="1,1,1" center="56.206,0,34.978" color="0.918,0.584,0.861"/>
+        <block size="1,1,1" center="-42.461,0,74.422" color="0.874,0.999,0.582"/>
+        <block size="1,1,1" center="-73.857,0,-79.958" color="0.818,0.706,0.928"/>
+        <block size="1,1,1" center="-54.509,0,63.219" color="0.916,0.964,0.743"/>
+        <block size="1,1,1" center="51.950,0,-50.003" color="0.550,0.656,0.878"/>
+        <block size="1,1,1" center="-23.719,0,76.815" color="0.830,0.968,0.662"/>
+        <block size="1,1,1" center="-72.148,0,95.518" color="0.920,0.555,0.986"/>
+        <block size="1,1,1" center="81.824,0,49.372" color="0.837,0.504,0.580"/>
+        <block size="1,1,1" center="-62.908,0,6.043" color="0.817,0.741,0.766"/>
+        <block size="1,1,1" center="96.013,0,-26.007" color="0.580,0.735,0.943"/>
+        <block size="1,1,1" center="52.779,0,-89.837" color="0.883,0.587,0.852"/>
+    </bloom>
+
+</map>

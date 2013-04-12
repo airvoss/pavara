@@ -10,7 +10,7 @@ from direct.interval.LerpInterval import *
 from direct.interval.IntervalGlobal import *
 
 from pavara.maps import load_maps
-from pavara.world import Block, FreeSolid
+from pavara.world import Block, FreeSolid, MODEL_CAM_BITS, LIGHT_CAM_BITS, PLAIN_CAM_BITS
 from pavara.utils.geom import GeomBuilder
 from pavara.walker import Walker
 
@@ -21,7 +21,6 @@ class MapTest (ShowBase):
         self.x = None
         self.y = None
 
-        self.render.setShaderAuto()
         #self.task_mgr = taskMgr
         self.initP3D()
         self.audio3d = Audio3DManager.Audio3DManager(self.sfxManagerList[0], self.cam)
@@ -29,31 +28,113 @@ class MapTest (ShowBase):
         self.doc = False
         self.map = False
 
-        black_shader=loader.loadShader("Shaders/blackShader.sha")
-        glow_buffer=self.win.make_texture_buffer("Glow scene", 512, 512)
-        glow_buffer.set_sort(-3)
-        glow_buffer.set_clear_color(Vec4(0,0,0,1))
+        self.modelbuffer = self.makeFBO("model buffer",1)
+        self.lightbuffer = self.makeFBO("light buffer",0)
+
+        self.texDepth = Texture()
+        self.texDepth.setFormat(Texture.FDepthStencil)
+        self.texAlbedo = Texture()
+        self.texNormal = Texture()
+        self.texFinal = Texture()
+        self.modelbuffer.addRenderTexture(self.texDepth,  GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPDepthStencil)
+        self.modelbuffer.addRenderTexture(self.texAlbedo, GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPColor)
+        self.modelbuffer.addRenderTexture(self.texNormal, GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPAuxRgba0)
+
+        self.lightbuffer.addRenderTexture(self.texFinal,  GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPColor)
+        lens = self.cam.node().get_lens()
+        self.modelcam = base.makeCamera(self.modelbuffer, lens=lens, scene=render, mask=MODEL_CAM_BITS)
+        self.lightcam = base.makeCamera(self.lightbuffer, lens=lens, scene=render, mask=LIGHT_CAM_BITS)
+        self.plaincam = base.makeCamera(self.lightbuffer, lens=lens, scene=render, mask=PLAIN_CAM_BITS)
+        self.cam.node().set_active(0)
+
+        self.modelbuffer.setSort(1)
+        self.lightbuffer.setSort(2)
+        self.win.setSort(3)
+
+        self.lightcam.node().getDisplayRegion(0).setSort(1)
+        self.plaincam.node().getDisplayRegion(0).setSort(2)
+
+        self.modelcam.node().getDisplayRegion(0).disableClears()
+        self.lightcam.node().getDisplayRegion(0).disableClears()
+        self.plaincam.node().getDisplayRegion(0).disableClears()
+        base.cam.node().getDisplayRegion(0).disableClears()
+        base.cam2d.node().getDisplayRegion(0).disableClears()
+        self.modelbuffer.disableClears()
+        base.win.disableClears()
+        self.modelbuffer.setClearColorActive(0)
+        self.modelbuffer.setClearDepthActive(1)
+        self.lightbuffer.setClearColorActive(1)
+        self.lightbuffer.setClearColor(Vec4(0,0,0,1))
+
+        proj = base.cam.node().getLens().getProjectionMat()
+        print proj
+        # vvvv probably not right vvvv TODO: understand projection matrices.
+        proj_x = -0.5 * proj.getCell(3,2) / proj.getCell(0,0)
+        proj_y = -0.5 * proj.getCell(3,2) / proj.getCell(1,1)
+        proj_z = 0.5 * proj.getCell(3,2)
+        proj_w = 0.5 - 0.5*proj.getCell(2,2)
+
+        tempnode = NodePath(PandaNode("temp node"))
+        tempnode.setAttrib(AlphaTestAttrib.make(RenderAttrib.MGreaterEqual, 0.5))
+        tempnode.setShader(loader.loadShader("Shaders/model.sha"))
+        tempnode.setAttrib(DepthTestAttrib.make(RenderAttrib.MLessEqual))
+        self.modelcam.node().setInitialState(tempnode.getState())
+
+        tempnode = NodePath(PandaNode("temp node"))
+        tempnode.setShader(loader.loadShader("Shaders/light.sha"))
+        tempnode.setShaderInput("texnormal",self.texNormal)
+        tempnode.setShaderInput("texalbedo",self.texAlbedo)
+        tempnode.setShaderInput("texdepth",self.texDepth)
+        tempnode.setShaderInput("camera",self.lightcam)
+        tempnode.setShaderInput("proj",Vec4(proj_x,proj_y,proj_z,proj_w))
+        tempnode.setAttrib(ColorBlendAttrib.make(ColorBlendAttrib.MAdd, ColorBlendAttrib.OOne, ColorBlendAttrib.OOne))
+        tempnode.setAttrib(CullFaceAttrib.make(CullFaceAttrib.MCullCounterClockwise))
+        #tempnode.setAttrib(DepthTestAttrib.make(RenderAttrib.MGreaterEqual))
+        tempnode.setAttrib(DepthWriteAttrib.make(DepthWriteAttrib.MOff))
+        self.lightcam.node().setInitialState(tempnode.getState())
+
+        rs = RenderState.makeEmpty()
+        self.plaincam.node().setInitialState(rs)
+
+        render.setState(RenderState.makeEmpty())
+
+        self.lightroot = NodePath(PandaNode("lightroot"))
+        self.lightroot.reparentTo(render)
+        self.modelroot = NodePath(PandaNode("modelroot"))
+        self.modelroot.reparentTo(render)
+        self.lightroot.hide(BitMask32(MODEL_CAM_BITS))
+        self.modelroot.hide(BitMask32(LIGHT_CAM_BITS))
+        self.modelroot.hide(BitMask32(PLAIN_CAM_BITS))
+
+
+
+        #black_shader=loader.loadShader("Shaders/blackShader.sha")
+        #glow_buffer=self.win.make_texture_buffer("Glow scene", 512, 512)
+        #glow_buffer.set_sort(-3)
+        #glow_buffer.set_clear_color(Vec4(0,0,0,1))
 
         # We have to attach a camera to the glow buffer. The glow camera
         # must have the same frustum as the main camera. As long as the aspect
         # ratios match, the rest will take care of itself.
-        glow_camera = self.makeCamera(glow_buffer, lens=self.cam.node().get_lens())
+        #glow_camera = self.makeCamera(glow_buffer, lens=self.cam.node().get_lens())
 
         # Tell the glow camera to use the glow shader
-        tempnode = NodePath(PandaNode("temp node"))
-        tempnode.set_shader(black_shader, 100)
-        glow_camera.node().set_initial_state(tempnode.get_state())
+        #tempnode = NodePath(PandaNode("temp node"))
+        #tempnode.set_shader(black_shader, 100)
+        #glow_camera.node().set_initial_state(tempnode.get_state())
 
 
         # set up the pipeline: from glow scene to blur x to blur y to main window.
-        blur_xbuffer=self.make_filter_buffer(glow_buffer,  "Blur X", -2, "Shaders/XBlurShader.sha")
-        blur_ybuffer=self.make_filter_buffer(blur_xbuffer, "Blur Y", -1, "Shaders/YBlurShader.sha")
-        self.finalcard = blur_ybuffer.get_texture_card()
+        #blur_xbuffer=self.make_filter_buffer(glow_buffer,  "Blur X", -2, "Shaders/XBlurShader.sha")
+        #blur_ybuffer=self.make_filter_buffer(blur_xbuffer, "Blur Y", -1, "Shaders/YBlurShader.sha")
+        self.finalcard = self.modelbuffer.get_texture_card()
+        self.finalcard.set_texture(self.texFinal)
         self.finalcard.reparent_to(render2d)
-        self.finalcard.set_attrib(ColorBlendAttrib.make(ColorBlendAttrib.MAdd))
+        #self.finalcard.set_attrib(ColorBlendAttrib.make(ColorBlendAttrib.MAdd))
         base.bufferViewer.setPosition("llcorner")
         base.bufferViewer.setLayout("hline")
         base.bufferViewer.setCardSize(0.652,0)
+        #self.modelbuffer.setClearColorActive(1)
         #base.bufferViewer.toggleEnable()
         if len(sys.argv) > 1:
             self.switch_map(sys.argv[1])
@@ -69,10 +150,30 @@ class MapTest (ShowBase):
         # axes.setScale(10)
         # axes.reparentTo(render)
 
+    def makeFBO(self, name, auxrgba):
+        # This routine creates an offscreen buffer.  All the complicated
+        # parameters are basically demanding capabilities from the offscreen
+        # buffer - we demand that it be able to render to texture on every
+        # bitplane, that it can support aux bitplanes, that it track
+        # the size of the host window, that it can render to texture
+        # cumulatively, and so forth.
+        winprops = WindowProperties()
+        props = FrameBufferProperties()
+        props.setRgbColor(1)
+        props.setAlphaBits(1)
+        props.setDepthBits(1)
+        props.setAuxRgba(auxrgba)
+        return base.graphicsEngine.makeOutput(
+             base.pipe, "model buffer", -2,
+             props, winprops,
+             GraphicsPipe.BFSizeTrackHost | GraphicsPipe.BFCanBindEvery |
+             GraphicsPipe.BFRttCumulative | GraphicsPipe.BFRefuseWindow,
+             base.win.getGsg(), base.win)
+
     def initP3D(self):
         self.disableMouse()
         self.setBackgroundColor(0, 0, 0)
-        render.setAntialias(AntialiasAttrib.MAuto)
+        #render.setAntialias(AntialiasAttrib.MAuto)
         self.floater = NodePath(PandaNode("floater"))
         self.floater.reparentTo(render)
         self.up = Vec3(0, 1, 0)
@@ -200,6 +301,8 @@ class MapTest (ShowBase):
     def setup_input(self):
         self.key_map = { 'left': 0
                       , 'right': 0
+                      , 'up': 0
+                      , 'down': 0
                       , 'forward': 0
                       , 'backward': 0
                       , 'rotateLeft': 0
@@ -214,6 +317,10 @@ class MapTest (ShowBase):
                       }
         self.accept('escape', sys.exit)
         self.accept('p', self.drop_blocks)
+        self.accept('t', self.set_key, ['up', 1])
+        self.accept('t-up', self.set_key, ['up', 0])
+        self.accept('g', self.set_key, ['down', 1])
+        self.accept('g-up', self.set_key, ['down', 0])
         self.accept('w', self.set_key, ['forward', 1])
         self.accept('w-up', self.set_key, ['forward', 0])
         self.accept('a', self.set_key, ['left', 1])
@@ -273,6 +380,10 @@ class MapTest (ShowBase):
             self.x = None
             self.y = None
 
+        if self.key_map['down']:
+            self.camera.setY(render, -25*dt+self.camera.getY())
+        if self.key_map['up']:
+            self.camera.setY(render, 25*dt+self.camera.getY())
         if (self.key_map['forward']):
             self.camera.setZ(self.camera, -25 * dt)
         if (self.key_map['backward']):

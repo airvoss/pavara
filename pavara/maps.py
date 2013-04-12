@@ -185,6 +185,13 @@ class Map (object):
         roll = parse_float(node['roll'])
         dome = self.world.attach(self.wrap_object(Dome(radius, samples, planes, color, mass, center, (yaw, pitch, roll), name=node['id'])))
 
+    def parse_fireflies(self, node):
+        center = parse_vector(node['center'], (0,0,0))
+        size = parse_vector(node['size'], (4, 4, 4))
+        count = parse_int(node['count'], 10)
+        for x in range(count):
+            self.world.add_firefly(center, size)
+
     def parse_sky(self, node):
         color = parse_color(node['color'], DEFAULT_SKY_COLOR)
         horizon = parse_color(node['horizon'], DEFAULT_HORIZON_COLOR)

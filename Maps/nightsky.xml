@@ -4,6 +4,7 @@
 		<celestial azimuth="30" elevation="20" color="1.0,1.0,1.0" intensity="0.6" visible="true"/>
 		<starfield seed="1234567890" count="1000" mode="realistic"/>
 	</sky>
+    <fireflies center="0,0,0" size="600,1,600" count="1000" />
 
 	<ground color="0.15,0.15,0.15"/>
 

@@ -45,6 +45,11 @@ GRENADE_OFFSET = [0, 1.55, .9]
 
 EXPLOSIONS_DONT_PUSH = ["expl", "ground", "grenade", "missile", "shrapnel", "Walker:0_walker_cap", "plasma"]
 
+MODEL_CAM_BITS = BitMask32.bit(0)
+LIGHT_CAM_BITS = BitMask32.bit(1)
+PLAIN_CAM_BITS = BitMask32.bit(2)
+
+
 class WorldObject (object):
     """
     Base class for anything attached to a World.
@@ -149,7 +154,9 @@ class CompositeObject (PhysicalObject):
         composite_geom = GeomBuilder('composite')
         for obj in self.objects:
             obj.add_to(composite_geom)
-        return NodePath(composite_geom.get_geom_node())
+        np = NodePath(composite_geom.get_geom_node())
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        return np
 
     def create_solid(self):
         node = BulletRigidBodyNode(self.name)
@@ -196,9 +203,20 @@ class Effect (object):
 class Bloom (Effect):
     def create_node(self):
         node = self.effected.create_node()
+        node.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS)
+        node.show(PLAIN_CAM_BITS)
         node.set_light_off()
-        node.set_shader_auto(101)
-        return node
+        glow = loader.loadModel('misc/sphere')
+        glow.set_scale(50)
+        glow.set_shader_input('lightcolor', *self.effected.color)
+        glow.hide(MODEL_CAM_BITS | PLAIN_CAM_BITS)
+        glow.show(LIGHT_CAM_BITS)# | MODEL_CAM_BITS | PLAIN_CAM_BITS)
+        #glow.set_shader_auto(101)
+        np = NodePath(render.attachNewNode(PandaNode('bloom')))
+        node.reparent_to(np)
+        glow.reparent_to(np)
+
+        return np
 
 class Hologram (Effect):
     collide_bits = NO_COLLISION_BITS
@@ -246,7 +264,9 @@ class Block (PhysicalObject):
         self.hpr = hpr
 
     def create_node(self):
-        return NodePath(GeomBuilder('block').add_block(self.color, (0, 0, 0), self.size).get_geom_node())
+        np = NodePath(GeomBuilder('block').add_block(self.color, (0, 0, 0), self.size).get_geom_node())
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        return np
 
     def create_solid(self):
         node = BulletRigidBodyNode(self.name)
@@ -285,7 +305,9 @@ class Ramp (PhysicalObject):
         rel_base = Point3(self.base - (self.midpoint - Point3(0, 0, 0)))
         rel_top = Point3(self.top - (self.midpoint - Point3(0, 0, 0)))
         self.geom = GeomBuilder().add_ramp(self.color, rel_base, rel_top, self.width, self.thickness).get_geom_node()
-        return NodePath(self.geom)
+        np = NodePath(self.geom)
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        return np
 
     def create_solid(self):
         node = BulletRigidBodyNode(self.name)
@@ -326,7 +348,9 @@ class Wedge (PhysicalObject):
         rel_base = Point3(self.base - (self.midpoint - Point3(0, 0, 0)))
         rel_top = Point3(self.top - (self.midpoint - Point3(0, 0, 0)))
         self.geom = GeomBuilder().add_wedge(self.color, rel_base, rel_top, self.width).get_geom_node()
-        return NodePath(self.geom)
+        np = NodePath(self.geom)
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        return np
 
     def create_solid(self):
         node = BulletRigidBodyNode(self.name)
@@ -416,7 +440,9 @@ class BlockRamp (PhysicalObject):
 
 
     def create_node(self):
-        return NodePath(GeomBuilder('ramp').add_block(self.color, (0, 0, 0), (self.thickness, self.width, self.length)).get_geom_node())
+        np = NodePath(GeomBuilder('ramp').add_block(self.color, (0, 0, 0), (self.thickness, self.width, self.length)).get_geom_node())
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        return np
 
     def create_solid(self):
         node = BulletRigidBodyNode(self.name)
@@ -465,7 +491,9 @@ class Dome (PhysicalObject):
 
     def create_node(self):
         self.geom = GeomBuilder().add_dome(self.color, (0, 0, 0), self.radius, self.samples, self.planes).get_geom_node()
-        return NodePath(self.geom)
+        np = NodePath(self.geom)
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        return np
 
     def create_solid(self):
         node = BulletRigidBodyNode(self.name)
@@ -528,6 +556,7 @@ class Goody (PhysicalObject):
             m = load_model('misc/rgbCube')
             m.set_scale(.5)
             m.set_hpr(45,45,45)
+        m.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
         return m
 
     def create_solid(self):
@@ -585,6 +614,7 @@ class Sky (WorldObject):
 
         geom.add_geom(GeomBuilder('sky').add_rect((1, 1, 1, 1), dl.getX(), dl.getY(), 0, ur.getX(), ur.getY(), 0).get_geom())
         self.node = self.world.render.attach_new_node(geom)
+        self.node.hide(PLAIN_CAM_BITS | LIGHT_CAM_BITS)
         self.node.set_shader(Shader.load('Shaders/Sky.sha'))
         self.node.set_shader_input('camera', self.world.camera)
         self.node.set_shader_input('sky', self.node)
@@ -668,7 +698,7 @@ class Plasma (PhysicalObject):
         p.setColor(0.9,(1 - cf) * 150.0/255.0, (1 - cf) * 150.0/255.0)
         p.set_light_off()
         m.set_scale(PLASMA_SCALE)
-        m.set_shader_auto(101)
+        m.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
         return m
 
     def create_solid(self):
@@ -923,6 +953,7 @@ class World (object):
     """
 
     def __init__(self, camera, debug=False, audio3d=None):
+        self.spheremodel = loader.loadModel('misc/sphere')
         self.objects = {}
         self.incarnators = []
         self.collidables = set()
@@ -1021,6 +1052,40 @@ class World (object):
             celestial = Dome(radius * 1.5, samples, 2, color, 0, location,
                 ((-(math.degrees(azimuth))), 90 + math.degrees(elevation), 0))
             self.celestials.attach(celestial)
+
+
+    def add_firefly(self, center, field_bounds):
+        pos1 = Point3(random.uniform(center[0]-field_bounds[0]/2., center[0]+field_bounds[0]/2.),
+                      random.uniform(center[1]-field_bounds[1]/2., center[1]+field_bounds[1]/2.),
+                      random.uniform(center[2]-field_bounds[2]/2., center[2]+field_bounds[2]/2.))
+        dir = Vec3(random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1))
+        dir.normalize()
+        pos2 = pos1 + (dir*20)
+        lightroot = render.find('**/lightroot')
+        fly = lightroot.attachNewNode(PandaNode("fly"))
+        glow = fly.attachNewNode(PandaNode("glow"))
+        dot  = fly.attachNewNode(PandaNode("dot"))
+        color_r = random.uniform(0.7,1.0)
+        color_g = 1.0
+        color_b = 0.8
+        fly.setShaderInput("lightcolor", color_r, color_g, color_b, 1.0)
+        int1 = fly.posInterval(random.uniform(7,12), pos1, pos2)
+        int2 = fly.posInterval(random.uniform(7,12), pos2, pos1)
+        si1 = fly.scaleInterval(random.uniform(0.8,1.5), Point3(0.2,0.2,0.2), Point3(0.2,0.2,0.2))
+        si2 = fly.scaleInterval(random.uniform(1.5,0.8), Point3(1.0,1.0,1.0), Point3(0.2,0.2,0.2))
+        si3 = fly.scaleInterval(random.uniform(1.0,2.0), Point3(0.2,0.2,0.2), Point3(1.0,1.0,1.0))
+        siseq = Sequence(si1, si2, si3)
+        siseq.loop()
+        siseq.setT(random.uniform(0,1000))
+        seq = Sequence(int1, int2)
+        seq.loop()
+        self.spheremodel.instanceTo(glow)
+        self.spheremodel.instanceTo(dot)
+        glow.setScale(60*1.1)
+        glow.hide(MODEL_CAM_BITS | PLAIN_CAM_BITS)
+        dot.setScale(0.15)
+        dot.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS)
+        dot.setColor(color_r, color_g, color_b, 1.0)
 
     def create_celestial_node(self):
         bounds = self.camera.node().get_lens().make_bounds()
