@@ -33,6 +33,8 @@ class MapTest (ShowBase):
 
         self.texDepth = Texture()
         self.texDepth.setFormat(Texture.FDepthStencil)
+        self.texDepth2 = Texture()
+        self.texDepth2.setFormat(Texture.FDepthStencil)
         self.texAlbedo = Texture()
         self.texNormal = Texture()
         self.texFinal = Texture()
@@ -41,16 +43,19 @@ class MapTest (ShowBase):
         self.modelbuffer.addRenderTexture(self.texNormal, GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPAuxRgba0)
 
         self.lightbuffer.addRenderTexture(self.texFinal,  GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPColor)
+        self.lightbuffer.addRenderTexture(self.texDepth,  GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPDepthStencil)
         lens = self.cam.node().get_lens()
         self.modelcam = base.makeCamera(self.modelbuffer, lens=lens, scene=render, mask=MODEL_CAM_BITS)
         self.lightcam = base.makeCamera(self.lightbuffer, lens=lens, scene=render, mask=LIGHT_CAM_BITS)
         self.plaincam = base.makeCamera(self.lightbuffer, lens=lens, scene=render, mask=PLAIN_CAM_BITS)
         self.cam.node().set_active(0)
+        #self.lightcam.node().set_active(0)
 
         self.modelbuffer.setSort(1)
         self.lightbuffer.setSort(2)
         self.win.setSort(3)
 
+        self.modelcam.node().getDisplayRegion(0).setSort(0)
         self.lightcam.node().getDisplayRegion(0).setSort(1)
         self.plaincam.node().getDisplayRegion(0).setSort(2)
 
@@ -61,9 +66,10 @@ class MapTest (ShowBase):
         base.cam2d.node().getDisplayRegion(0).disableClears()
         self.modelbuffer.disableClears()
         base.win.disableClears()
-        self.modelbuffer.setClearColorActive(0)
+        self.modelbuffer.setClearColorActive(1)
         self.modelbuffer.setClearDepthActive(1)
         self.lightbuffer.setClearColorActive(1)
+        self.lightbuffer.setClearDepthActive(0)
         self.lightbuffer.setClearColor(Vec4(0,0,0,1))
 
         proj = base.cam.node().getLens().getProjectionMat()
@@ -77,6 +83,7 @@ class MapTest (ShowBase):
         tempnode = NodePath(PandaNode("temp node"))
         tempnode.setAttrib(AlphaTestAttrib.make(RenderAttrib.MGreaterEqual, 0.5))
         tempnode.setShader(loader.loadShader("Shaders/model.sha"))
+        tempnode.setShaderInput('usevertex', 1,1,1,1)
         tempnode.setAttrib(DepthTestAttrib.make(RenderAttrib.MLessEqual))
         self.modelcam.node().setInitialState(tempnode.getState())
 
@@ -89,12 +96,17 @@ class MapTest (ShowBase):
         tempnode.setShaderInput("proj",Vec4(proj_x,proj_y,proj_z,proj_w))
         tempnode.setAttrib(ColorBlendAttrib.make(ColorBlendAttrib.MAdd, ColorBlendAttrib.OOne, ColorBlendAttrib.OOne))
         tempnode.setAttrib(CullFaceAttrib.make(CullFaceAttrib.MCullCounterClockwise))
-        #tempnode.setAttrib(DepthTestAttrib.make(RenderAttrib.MGreaterEqual))
+        tempnode.setAttrib(DepthTestAttrib.make(RenderAttrib.MGreaterEqual))
         tempnode.setAttrib(DepthWriteAttrib.make(DepthWriteAttrib.MOff))
         self.lightcam.node().setInitialState(tempnode.getState())
 
         rs = RenderState.makeEmpty()
-        self.plaincam.node().setInitialState(rs)
+        tempnode = NodePath(PandaNode('temp node'))
+        tempnode.setAttrib(DepthTestAttrib.make(RenderAttrib.MLess))
+        tempnode.setAttrib(DepthWriteAttrib.make(DepthWriteAttrib.MOn))
+
+        #self.plaincam.node().setInitialState(rs)
+        self.plaincam.node().setInitialState(tempnode.getState())
 
         render.setState(RenderState.makeEmpty())
 
@@ -105,6 +117,8 @@ class MapTest (ShowBase):
         self.lightroot.hide(BitMask32(MODEL_CAM_BITS))
         self.modelroot.hide(BitMask32(LIGHT_CAM_BITS))
         self.modelroot.hide(BitMask32(PLAIN_CAM_BITS))
+        #self.lightbuffer.share_depth_buffer(self.modelbuffer)
+        #self.modelbuffer.share_depth_buffer(self.lightbuffer)
 
 
 
@@ -127,7 +141,7 @@ class MapTest (ShowBase):
         # set up the pipeline: from glow scene to blur x to blur y to main window.
         #blur_xbuffer=self.make_filter_buffer(glow_buffer,  "Blur X", -2, "Shaders/XBlurShader.sha")
         #blur_ybuffer=self.make_filter_buffer(blur_xbuffer, "Blur Y", -1, "Shaders/YBlurShader.sha")
-        self.finalcard = self.modelbuffer.get_texture_card()
+        self.finalcard = self.lightbuffer.get_texture_card()
         self.finalcard.set_texture(self.texFinal)
         self.finalcard.reparent_to(render2d)
         #self.finalcard.set_attrib(ColorBlendAttrib.make(ColorBlendAttrib.MAdd))

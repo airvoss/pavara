@@ -614,7 +614,7 @@ class Sky (WorldObject):
 
         geom.add_geom(GeomBuilder('sky').add_rect((1, 1, 1, 1), dl.getX(), dl.getY(), 0, ur.getX(), ur.getY(), 0).get_geom())
         self.node = self.world.render.attach_new_node(geom)
-        self.node.hide(PLAIN_CAM_BITS | LIGHT_CAM_BITS)
+        self.node.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS)
         self.node.set_shader(Shader.load('Shaders/Sky.sha'))
         self.node.set_shader_input('camera', self.world.camera)
         self.node.set_shader_input('sky', self.node)
@@ -652,6 +652,11 @@ class Ground (PhysicalObject):
     def __init__(self, radius, color, name=None):
         super(Ground, self).__init__(name)
         self.color = color
+
+    def create_node(self):
+        np = NodePath(GeomBuilder('block').add_block(self.color, (0, 0, 0), (99999, 0.01, 99999)).get_geom_node())
+        np.hide(PLAIN_CAM_BITS | LIGHT_CAM_BITS)
+        return np
 
     def create_solid(self):
         node = BulletRigidBodyNode(self.name)
@@ -691,15 +696,23 @@ class Plasma (PhysicalObject):
         self.age = 0
 
     def create_node(self):
+        np = NodePath(PandaNode('plasma')) #render.attach_new_node('asdf')
         m = load_model('plasma.egg')
-        m.set_shader_auto()
+        m.reparent_to(np)
+        sphere = load_model('misc/sphere')
         p = m.find('**/plasma')
         cf = self.energy
-        p.setColor(0.9,(1 - cf) * 150.0/255.0, (1 - cf) * 150.0/255.0)
+        color = (0.9,(1 - cf) * 150.0/255.0, (1 - cf) * 150.0/255.0)
+        p.set_color(*color)
         p.set_light_off()
         m.set_scale(PLASMA_SCALE)
-        m.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
-        return m
+        m.hide(LIGHT_CAM_BITS | MODEL_CAM_BITS)
+        glow = np.attach_new_node(PandaNode("plasmalight"))
+        glow.setShaderInput("lightcolor", 1, 0.6, 0, 1.0)
+        sphere.instanceTo(glow)
+        glow.setScale(6.5)
+        glow.hide(MODEL_CAM_BITS | PLAIN_CAM_BITS)
+        return np
 
     def create_solid(self):
         node = BulletGhostNode("plasma")
@@ -762,6 +775,7 @@ class Missile (PhysicalObject):
 
     def create_node(self):
         self.model = load_model('missile.egg')
+        self.model.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
         self.body = self.model.find('**/bodywings')
         self.body.set_color(*self.color)
         self.main_engines = self.model.find('**/mainengines')
@@ -824,6 +838,7 @@ class Grenade (PhysicalObject):
 
     def create_node(self):
         self.model = Actor('grenade.egg')
+        self.model.hide(PLAIN_CAM_BITS | LIGHT_CAM_BITS)
         self.shell = self.model.find('**/shell')
         self.shell.set_color(*self.color)
         self.inner_top = self.model.find('**/inner_top')
@@ -917,8 +932,7 @@ class Shrapnel (PhysicalObject):
         self.geom = GeomBuilder('tri').add_tri(self.color, geom_points).get_geom_node()
         self.node = self.world.render.attach_new_node(self.geom)
         self.colorhandle = self.node.find('**/*')
-        self.node.set_shader_auto(101)
-        self.node.set_light_off()
+        self.node.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS)
         return self.node
 
     def create_solid(self):
@@ -1091,6 +1105,8 @@ class World (object):
         bounds = self.camera.node().get_lens().make_bounds()
         self.celestials = self.celestials.create_node()
         self.celestials.set_transparency(TransparencyAttrib.MAlpha)
+        self.celestials.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS)
+        self.celestials.show(PLAIN_CAM_BITS)
         self.celestials.set_light_off()
         self.celestials.set_effect(CompassEffect.make(self.camera, CompassEffect.PPos))
         self.celestials.set_shader_auto(101)
