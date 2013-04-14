@@ -201,9 +201,9 @@ class MapTest (ShowBase):
         #blackout card
         bgeom = GeomBuilder().add_rect([0,0,0,1],-5,-5,0,5,5,0).get_geom_node()
         b = render.attach_new_node(bgeom)
-        b.hide(LIGHT_CAM_BITS | MODEL_CAM_BITS | BLOOM_CAM_BITS)
-        b.show(PLAIN_CAM_BITS)
-        b.set_shader_auto(101)
+        b.hide(LIGHT_CAM_BITS | MODEL_CAM_BITS)
+        b.show(PLAIN_CAM_BITS | BLOOM_CAM_BITS)
+        b.set_depth_write(False)
         b.set_pos(self.cam.get_pos(render))
         b.set_hpr(self.cam.get_hpr(render))
         b_move_by = render.get_relative_vector(self.cam, Vec3(0,0,-2))
@@ -224,8 +224,9 @@ class MapTest (ShowBase):
     def show_selection_screen(self):
         LoadFontFace("Ui/assets/MunroSmall.otf")
         LoadFontFace("Ui/assets/Munro.otf")
-        self.r_region = RocketRegion.make('pandaRocket', base.win)
+        self.r_region = RocketRegion.make('pandaRocket', self.lightbuffer)
         self.r_region.setActive(1)
+        self.r_region.setSort(6)
         context = self.r_region.getContext()
         self.doc = context.LoadDocument('Ui/rml/map_test.rml')
 
