@@ -1,0 +1,51 @@
+//Cg
+//
+//Cg profile arbvp1 arbfp1
+
+void vshader(float4 vtx_position : POSITION,
+             out float4 l_position : POSITION,
+             out float4 l_pos : TEXCOORD0,
+             uniform float4x4 mat_modelproj,
+             out float4 l_color : COLOR,
+             uniform float4x4 trans_model_to_clip)
+{
+  l_position=mul(mat_modelproj, vtx_position);
+  l_pos=mul(trans_model_to_clip, vtx_position);
+  l_pos.z = l_pos.w;
+}
+
+void fshader(float4 l_pos: TEXCOORD0,
+             float4 l_scale: TEXCOORD1,
+             uniform sampler2D k_texnormal : TEXUNIT0,
+             uniform sampler2D k_texalbedo : TEXUNIT1,
+             uniform sampler2D k_texdepth  : TEXUNIT2,
+             uniform float4 texpad_texnormal,
+             uniform float4 vspos_model,
+             uniform float4 vspos_camera,
+             uniform float4 alight_amb,
+             uniform float4 row1_model_to_view,
+             uniform float4x4 trans_clip_to_view,
+             uniform float4x4 trans_world_to_view,
+             out float4 o_color: COLOR)
+{
+  float3 screen = l_pos.xyz / l_pos.w;
+  float2 texcoords = float2(screen.xy) * texpad_texnormal.xy + texpad_texnormal.xy;
+
+  float4 albedo = tex2D(k_texalbedo, texcoords);
+  float4 normal = tex2D(k_texnormal, texcoords);
+  
+  normal -= 0.5;
+  normal *= 2;
+  normal = normalize(normal);
+
+  /*float4 P;
+  P.xy = screen.xy;
+  P.z = depth;
+  P.w = 1;
+  P = mul(trans_clip_to_view, P);
+  P /= P.w * 2;
+  float3 view = P.xyz;
+  */
+  o_color = albedo * alight_amb;
+  o_color.a = 1;
+}

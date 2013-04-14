@@ -1,0 +1,51 @@
+//Cg
+//
+//Cg profile arbvp1 arbfp1
+
+void vshader(float4 vtx_position : POSITION,
+             out float4 l_position : POSITION,
+             out float4 l_pos : TEXCOORD0,
+             uniform float4x4 mat_modelproj,
+             out float4 l_color : COLOR,
+             uniform float4x4 trans_model_to_clip)
+{
+  l_position=mul(mat_modelproj, vtx_position);
+  l_pos=mul(trans_model_to_clip, vtx_position);
+  l_pos.z = l_pos.w;
+}
+
+void fshader(float4 l_pos: TEXCOORD0,
+             float4 l_scale: TEXCOORD1,
+             uniform sampler2D k_texnormal : TEXUNIT0,
+             uniform sampler2D k_texalbedo : TEXUNIT1,
+             uniform sampler2D k_texdepth  : TEXUNIT2,
+             uniform float4 texpad_texnormal,
+             uniform float4x4 dlight_dl_rel_view,
+             uniform float4x4 trans_model_to_view,
+             uniform float4x4 trans_clip_to_view,
+             uniform float4x4 trans_world_to_view,
+             out float4 o_color: COLOR)
+{
+  float4 result;
+  // Fetch all textures.
+  // Correct the surface normal for interpolation effects
+  // Begin view-space light calculations
+  float ldist,lattenv,langle;
+  float4 lcolor,lspec,lvec,lpoint,latten,ldir,leye,lhalf;
+  float4 tot_ambient = float4(0,0,0,0);
+  
+  float3 screen = l_pos.xyz / l_pos.w;
+  float2 texcoords = float2(screen.xy) * texpad_texnormal.xy + texpad_texnormal.xy;
+
+  float4 albedo = tex2D(k_texalbedo, texcoords);
+  float4 normal = tex2D(k_texnormal, texcoords);
+  
+  normal -= 0.5;
+  normal *= 2;
+  normal = normalize(normal);
+  lcolor = dlight_dl_rel_view[0];
+  lspec  = dlight_dl_rel_view[1];
+  lvec   = dlight_dl_rel_view[2];
+  lcolor *= dot(normal, lvec.xyz);
+  o_color = lcolor * albedo;
+}

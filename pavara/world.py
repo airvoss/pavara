@@ -561,6 +561,7 @@ class Goody (PhysicalObject):
             m.set_scale(.5)
             m.set_hpr(45,45,45)
         m.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
+        m.set_shader_input('usevertex', 0,0,0,0)
         return m
 
     def create_solid(self):
@@ -788,6 +789,7 @@ class Missile (PhysicalObject):
         self.wing_engines.set_color(*random.choice(ENGINE_COLORS))
         self.model.set_scale(MISSILE_SCALE)
         self.model.set_hpr(0,0,0)
+        self.model.set_shader_input('usevertex', 0,0,0,0)
         return self.model
 
     def create_solid(self):
@@ -852,6 +854,7 @@ class Grenade (PhysicalObject):
         self.model.set_scale(GRENADE_SCALE)
         self.model.set_hpr(0,0,0)
         self.spin_bone = self.model.controlJoint(None, 'modelRoot', 'grenade_bone')
+        self.model.set_shader_input('usevertex', 0,0,0,0)
         return self.model
 
     def create_solid(self):
@@ -983,6 +986,7 @@ class World (object):
         self.camera = camera
         self.audio3d = audio3d
         self.ambient = self._make_ambient()
+        self.dlights = []
         self.celestials = CompositeObject()
         self.sky = self.attach(Sky())
         # Set up the physics world. TODO: let maps set gravity.
@@ -1061,6 +1065,7 @@ class World (object):
             node = self.render.attach_new_node(dlight)
             node.look_at(*(location * -1))
             self.render.set_light(node)
+            self.dlights.append(node)
         if visible:
             if radius <= 2.0:
                 samples = 6

@@ -267,6 +267,26 @@ class MapTest (ShowBase):
         else:
             maps = load_maps('Maps/%s' % mapname, self.cam)
         self.map = maps[0]
+        np = render.attach_new_node(GeomBuilder('ambient_lights').add_rect([0,0,0,1],-5,-5,0,5,5,0).get_geom_node())
+        np.hide(MODEL_CAM_BITS | BLOOM_CAM_BITS | PLAIN_CAM_BITS)
+        np.show(LIGHT_CAM_BITS)
+        np.setShader(loader.loadShader("Shaders/ambient.sha"))
+        np.set_shader_input('amb', self.map.world.ambient)
+        np.setAttrib(DepthTestAttrib.make(RenderAttrib.MLessEqual))
+        np.setAttrib(CullFaceAttrib.make(CullFaceAttrib.MCullClockwise))
+        np.set_pos(Vec3(0, 0, -3))
+        np.reparent_to(self.cam)
+        for dlight in self.map.world.dlights:
+            np = render.attach_new_node(GeomBuilder('dir_lights').add_rect([0,0,0,1],-5,-5,0,5,5,0).get_geom_node())
+            np.hide(MODEL_CAM_BITS | BLOOM_CAM_BITS | PLAIN_CAM_BITS)
+            np.show(LIGHT_CAM_BITS)
+            np.setShader(loader.loadShader("Shaders/directional.sha"))
+            np.set_shader_input('dl', dlight)
+            np.setAttrib(DepthTestAttrib.make(RenderAttrib.MLessEqual))
+            np.setAttrib(CullFaceAttrib.make(CullFaceAttrib.MCullClockwise))
+            np.set_pos(Vec3(0, 0, -3))
+            np.reparent_to(self.cam)
+
         self.map.show(self.render)
         self.camera.setPos(*self.map.preview_cam[0])
         self.camera.setH(self.map.preview_cam[1][0])
