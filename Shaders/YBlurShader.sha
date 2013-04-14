@@ -17,13 +17,13 @@ void fshader(float2 l_texcoord0 : TEXCOORD0,
              out float4 o_color : COLOR,
              uniform sampler2D tex_0 : TEXUNIT0)
 {
-  float3 offset = float3(1.0/1024.0, 5.0/1024.0, 9.0/1024.0);
-  o_color  =  tex2D(tex_0, float2(l_texcoord0.x, l_texcoord0.y - offset.z)) * 0.9;
-  o_color += tex2D(tex_0, float2(l_texcoord0.x, l_texcoord0.y - offset.y)) * 3.0;
+  float3 offset = float3(1.0/720.0, 3.0/720.0, 6.0/720.0);
+  o_color  =  tex2D(tex_0, float2(l_texcoord0.x, l_texcoord0.y - offset.z)) * 1.9;
+  o_color += tex2D(tex_0, float2(l_texcoord0.x, l_texcoord0.y - offset.y)) * 6.0;
   o_color += tex2D(tex_0, float2(l_texcoord0.x, l_texcoord0.y - offset.x)) * 10.0;
   o_color += tex2D(tex_0, float2(l_texcoord0.x, l_texcoord0.y + offset.x)) * 10.0;
-  o_color += tex2D(tex_0, float2(l_texcoord0.x, l_texcoord0.y + offset.y)) * 3.0;
-  //o_color += tex2D(tex_0, float2(l_texcoord0.x, l_texcoord0.y + offset.z)) * 0.9;
+  o_color += tex2D(tex_0, float2(l_texcoord0.x, l_texcoord0.y + offset.y)) * 6.0;
+  //o_color += tex2D(tex_0, float2(l_texcoord0.x, l_texcoord0.y + offset.z)) * 1.9;
   o_color = o_color * 0.03;
 }
 
