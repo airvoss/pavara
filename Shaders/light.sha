@@ -60,7 +60,8 @@ void fshader(float4 l_pos: TEXCOORD0,
   float  falloff = saturate(1.0 - scaledist);
   //falloff = length(I) + lightdist;
   //falloff = 1;
-  float brite = falloff * falloff * max(dot(lightdir, float3(normal)),0);
+  falloff = 1/lightdist;
+  float brite = 2 * falloff * max(dot(lightdir, float3(normal)),0);
   o_color = albedo * k_lightcolor * brite;
   o_color.a = 1;
 }

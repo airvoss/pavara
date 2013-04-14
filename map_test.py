@@ -10,7 +10,7 @@ from direct.interval.LerpInterval import *
 from direct.interval.IntervalGlobal import *
 
 from pavara.maps import load_maps
-from pavara.world import Block, FreeSolid, MODEL_CAM_BITS, LIGHT_CAM_BITS, PLAIN_CAM_BITS
+from pavara.world import Block, FreeSolid, MODEL_CAM_BITS, LIGHT_CAM_BITS, PLAIN_CAM_BITS, BLOOM_CAM_BITS
 from pavara.utils.geom import GeomBuilder
 from pavara.walker import Walker
 
@@ -30,30 +30,33 @@ class MapTest (ShowBase):
 
         self.modelbuffer = self.makeFBO("model buffer",1)
         self.lightbuffer = self.makeFBO("light buffer",0)
+        self.bloombuffer = self.makeFBO("bloom buffer",0)
 
         self.texDepth = Texture()
         self.texDepth.setFormat(Texture.FDepthStencil)
-        self.texDepth2 = Texture()
-        self.texDepth2.setFormat(Texture.FDepthStencil)
         self.texAlbedo = Texture()
         self.texNormal = Texture()
         self.texFinal = Texture()
+        self.texBloom = Texture()
         self.modelbuffer.addRenderTexture(self.texDepth,  GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPDepthStencil)
         self.modelbuffer.addRenderTexture(self.texAlbedo, GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPColor)
         self.modelbuffer.addRenderTexture(self.texNormal, GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPAuxRgba0)
 
         self.lightbuffer.addRenderTexture(self.texFinal,  GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPColor)
         self.lightbuffer.addRenderTexture(self.texDepth,  GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPDepthStencil)
+        self.bloombuffer.addRenderTexture(self.texBloom,  GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPColor)
+        self.bloombuffer.addRenderTexture(self.texDepth,  GraphicsOutput.RTMBindOrCopy, GraphicsOutput.RTPDepthStencil)
         lens = self.cam.node().get_lens()
         self.modelcam = base.makeCamera(self.modelbuffer, lens=lens, scene=render, mask=MODEL_CAM_BITS)
         self.lightcam = base.makeCamera(self.lightbuffer, lens=lens, scene=render, mask=LIGHT_CAM_BITS)
         self.plaincam = base.makeCamera(self.lightbuffer, lens=lens, scene=render, mask=PLAIN_CAM_BITS)
+        self.bloomcam = base.makeCamera(self.bloombuffer, lens=lens, scene=render, mask=BLOOM_CAM_BITS)
         self.cam.node().set_active(0)
-        #self.lightcam.node().set_active(0)
 
         self.modelbuffer.setSort(1)
         self.lightbuffer.setSort(2)
-        self.win.setSort(3)
+        self.bloombuffer.setSort(3)
+        self.win.setSort(4)
 
         self.modelcam.node().getDisplayRegion(0).setSort(0)
         self.lightcam.node().getDisplayRegion(0).setSort(1)
@@ -62,15 +65,19 @@ class MapTest (ShowBase):
         self.modelcam.node().getDisplayRegion(0).disableClears()
         self.lightcam.node().getDisplayRegion(0).disableClears()
         self.plaincam.node().getDisplayRegion(0).disableClears()
+        self.bloomcam.node().getDisplayRegion(0).disableClears()
         base.cam.node().getDisplayRegion(0).disableClears()
         base.cam2d.node().getDisplayRegion(0).disableClears()
         self.modelbuffer.disableClears()
+        #self.bloombuffer.disableClears()
         base.win.disableClears()
+        self.bloombuffer.setClearDepthActive(0)
         self.modelbuffer.setClearColorActive(1)
         self.modelbuffer.setClearDepthActive(1)
         self.lightbuffer.setClearColorActive(1)
         self.lightbuffer.setClearDepthActive(0)
         self.lightbuffer.setClearColor(Vec4(0,0,0,1))
+        self.bloombuffer.setClearColor(Vec4(0,0,0,1))
 
         proj = base.cam.node().getLens().getProjectionMat()
         print proj
@@ -100,13 +107,15 @@ class MapTest (ShowBase):
         tempnode.setAttrib(DepthWriteAttrib.make(DepthWriteAttrib.MOff))
         self.lightcam.node().setInitialState(tempnode.getState())
 
-        rs = RenderState.makeEmpty()
         tempnode = NodePath(PandaNode('temp node'))
         tempnode.setAttrib(DepthTestAttrib.make(RenderAttrib.MLess))
         tempnode.setAttrib(DepthWriteAttrib.make(DepthWriteAttrib.MOn))
-
-        #self.plaincam.node().setInitialState(rs)
         self.plaincam.node().setInitialState(tempnode.getState())
+
+        tempnode = NodePath(PandaNode('temp node'))
+        tempnode.setAttrib(DepthTestAttrib.make(RenderAttrib.MLessEqual))
+        tempnode.setAttrib(DepthWriteAttrib.make(DepthWriteAttrib.MOff))
+        self.bloomcam.node().setInitialState(tempnode.getState())
 
         render.setState(RenderState.makeEmpty())
 
@@ -117,34 +126,29 @@ class MapTest (ShowBase):
         self.lightroot.hide(BitMask32(MODEL_CAM_BITS))
         self.modelroot.hide(BitMask32(LIGHT_CAM_BITS))
         self.modelroot.hide(BitMask32(PLAIN_CAM_BITS))
-        #self.lightbuffer.share_depth_buffer(self.modelbuffer)
-        #self.modelbuffer.share_depth_buffer(self.lightbuffer)
-
-
-
-        #black_shader=loader.loadShader("Shaders/blackShader.sha")
-        #glow_buffer=self.win.make_texture_buffer("Glow scene", 512, 512)
-        #glow_buffer.set_sort(-3)
-        #glow_buffer.set_clear_color(Vec4(0,0,0,1))
-
-        # We have to attach a camera to the glow buffer. The glow camera
-        # must have the same frustum as the main camera. As long as the aspect
-        # ratios match, the rest will take care of itself.
-        #glow_camera = self.makeCamera(glow_buffer, lens=self.cam.node().get_lens())
-
-        # Tell the glow camera to use the glow shader
-        #tempnode = NodePath(PandaNode("temp node"))
-        #tempnode.set_shader(black_shader, 100)
-        #glow_camera.node().set_initial_state(tempnode.get_state())
-
+        self.modelroot.hide(BitMask32(BLOOM_CAM_BITS))
 
         # set up the pipeline: from glow scene to blur x to blur y to main window.
-        #blur_xbuffer=self.make_filter_buffer(glow_buffer,  "Blur X", -2, "Shaders/XBlurShader.sha")
-        #blur_ybuffer=self.make_filter_buffer(blur_xbuffer, "Blur Y", -1, "Shaders/YBlurShader.sha")
+        blur_xbuffer=self.make_filter_buffer(self.bloombuffer,  "Blur X", -2, "Shaders/XBlurShader.sha")
+        blur_ybuffer=self.make_filter_buffer(blur_xbuffer, "Blur Y", -1, "Shaders/YBlurShader.sha")
+        #fxaa_shader = loader.loadShader('Shaders/fxaa.cg')
+        #fxaa_buffer = base.win.make_texture_buffer('fxaa', 1024, 1024)
+        #fxaa_buffer.set_sort(5) # ???
+        #fxaa_buffer.set_clear_color(Vec4(1,0,0,1))
+        #fxaa_cam = base.makeCamera2d(fxaa_buffer)
+        #fxaa_scene = NodePath('fxaa')
+        #fxaa_cam.node().set_scene(fxaa_scene)
+        #card = self.lightbuffer.get_texture_card()
+        #card.reparent_to(fxaa_scene)
+        #card.set_shader(fxaa_shader)
+        #card.set_shader_input('color', self.texFinal)
         self.finalcard = self.lightbuffer.get_texture_card()
         self.finalcard.set_texture(self.texFinal)
         self.finalcard.reparent_to(render2d)
-        #self.finalcard.set_attrib(ColorBlendAttrib.make(ColorBlendAttrib.MAdd))
+        self.blurcard = blur_ybuffer.get_texture_card()
+        #self.finalcard.set_texture(self.texFinal)
+        self.blurcard.reparent_to(render2d)
+        self.blurcard.set_attrib(ColorBlendAttrib.make(ColorBlendAttrib.MAdd))
         base.bufferViewer.setPosition("llcorner")
         base.bufferViewer.setLayout("hline")
         base.bufferViewer.setCardSize(0.652,0)
@@ -172,6 +176,7 @@ class MapTest (ShowBase):
         # the size of the host window, that it can render to texture
         # cumulatively, and so forth.
         winprops = WindowProperties()
+        print winprops
         props = FrameBufferProperties()
         props.setRgbColor(1)
         props.setAlphaBits(1)
@@ -196,6 +201,8 @@ class MapTest (ShowBase):
         #blackout card
         bgeom = GeomBuilder().add_rect([0,0,0,1],-5,-5,0,5,5,0).get_geom_node()
         b = render.attach_new_node(bgeom)
+        b.hide(LIGHT_CAM_BITS | MODEL_CAM_BITS | BLOOM_CAM_BITS)
+        b.show(PLAIN_CAM_BITS)
         b.set_shader_auto(101)
         b.set_pos(self.cam.get_pos(render))
         b.set_hpr(self.cam.get_hpr(render))
@@ -412,7 +419,7 @@ class MapTest (ShowBase):
         return task.cont
 
     def make_filter_buffer(self, srcbuffer, name, sort, prog):
-        blur_buffer = self.win.make_texture_buffer(name, 512, 512)
+        blur_buffer = self.win.make_texture_buffer(name, 1280, 720)
         blur_buffer.set_sort(sort)
         blur_buffer.set_clear_color(Vec4(1,0,0,1))
         blur_camera = self.makeCamera2d(blur_buffer)

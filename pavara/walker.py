@@ -305,7 +305,7 @@ class Walker (PhysicalObject):
         self.skeleton = Skeleton(left_bones, right_bones, self.actor.controlJoint(None, 'modelRoot', 'head_bone'))
         self.left_barrel_joint = self.actor.exposeJoint(None, 'modelRoot', 'left_barrel_bone')
         self.right_barrel_joint = self.actor.exposeJoint(None, 'modelRoot', 'right_barrel_bone')
-        self.actor.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        self.actor.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         self.actor.set_shader_input('usevertex', 0,0,0,0)
         return self.actor
 

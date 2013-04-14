@@ -48,6 +48,7 @@ EXPLOSIONS_DONT_PUSH = ["expl", "ground", "grenade", "missile", "shrapnel", "Wal
 MODEL_CAM_BITS = BitMask32.bit(0)
 LIGHT_CAM_BITS = BitMask32.bit(1)
 PLAIN_CAM_BITS = BitMask32.bit(2)
+BLOOM_CAM_BITS = BitMask32.bit(3)
 
 
 class WorldObject (object):
@@ -155,7 +156,7 @@ class CompositeObject (PhysicalObject):
         for obj in self.objects:
             obj.add_to(composite_geom)
         np = NodePath(composite_geom.get_geom_node())
-        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         return np
 
     def create_solid(self):
@@ -204,15 +205,16 @@ class Bloom (Effect):
     def create_node(self):
         node = self.effected.create_node()
         node.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS)
-        node.show(PLAIN_CAM_BITS)
+        node.show(PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         node.set_light_off()
+        node.set_shader_auto()
         glow = loader.loadModel('misc/sphere')
         glow.set_scale(50)
         glow.set_shader_input('lightcolor', *self.effected.color)
-        glow.hide(MODEL_CAM_BITS | PLAIN_CAM_BITS)
+        glow.hide(MODEL_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         glow.show(LIGHT_CAM_BITS)# | MODEL_CAM_BITS | PLAIN_CAM_BITS)
         #glow.set_shader_auto(101)
-        np = NodePath(render.attachNewNode(PandaNode('bloom')))
+        np = NodePath(PandaNode('bloom'))
         node.reparent_to(np)
         glow.reparent_to(np)
 
@@ -243,6 +245,8 @@ class Transparent (Effect):
 
     def create_node(self):
         node = self.effected.create_node()
+        node.hide(MODEL_CAM_BITS)
+        node.show(PLAIN_CAM_BITS)
         node.set_transparency(TransparencyAttrib.MAlpha)
         node.set_two_sided(True)
         node.set_depth_write(False)
@@ -265,7 +269,7 @@ class Block (PhysicalObject):
 
     def create_node(self):
         np = NodePath(GeomBuilder('block').add_block(self.color, (0, 0, 0), self.size).get_geom_node())
-        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         return np
 
     def create_solid(self):
@@ -306,7 +310,7 @@ class Ramp (PhysicalObject):
         rel_top = Point3(self.top - (self.midpoint - Point3(0, 0, 0)))
         self.geom = GeomBuilder().add_ramp(self.color, rel_base, rel_top, self.width, self.thickness).get_geom_node()
         np = NodePath(self.geom)
-        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         return np
 
     def create_solid(self):
@@ -349,7 +353,7 @@ class Wedge (PhysicalObject):
         rel_top = Point3(self.top - (self.midpoint - Point3(0, 0, 0)))
         self.geom = GeomBuilder().add_wedge(self.color, rel_base, rel_top, self.width).get_geom_node()
         np = NodePath(self.geom)
-        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         return np
 
     def create_solid(self):
@@ -441,7 +445,7 @@ class BlockRamp (PhysicalObject):
 
     def create_node(self):
         np = NodePath(GeomBuilder('ramp').add_block(self.color, (0, 0, 0), (self.thickness, self.width, self.length)).get_geom_node())
-        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         return np
 
     def create_solid(self):
@@ -492,7 +496,7 @@ class Dome (PhysicalObject):
     def create_node(self):
         self.geom = GeomBuilder().add_dome(self.color, (0, 0, 0), self.radius, self.samples, self.planes).get_geom_node()
         np = NodePath(self.geom)
-        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        np.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         return np
 
     def create_solid(self):
@@ -556,7 +560,7 @@ class Goody (PhysicalObject):
             m = load_model('misc/rgbCube')
             m.set_scale(.5)
             m.set_hpr(45,45,45)
-        m.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        m.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         return m
 
     def create_solid(self):
@@ -606,15 +610,14 @@ class Sky (WorldObject):
         self.scale = scale
 
     def attached(self):
-        geom = GeomNode('sky')
         bounds = self.world.camera.node().get_lens().make_bounds()
         dl = bounds.getMin()
         ur = bounds.getMax()
         z = dl.getZ() * 0.99
 
-        geom.add_geom(GeomBuilder('sky').add_rect((1, 1, 1, 1), dl.getX(), dl.getY(), 0, ur.getX(), ur.getY(), 0).get_geom())
+        geom = GeomBuilder('sky').add_rect((1, 1, 1, 1), dl.getX(), dl.getY(), 0, ur.getX(), ur.getY(), 0).get_geom_node()
         self.node = self.world.render.attach_new_node(geom)
-        self.node.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS)
+        self.node.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS | BLOOM_CAM_BITS)
         self.node.set_shader(Shader.load('Shaders/Sky.sha'))
         self.node.set_shader_input('camera', self.world.camera)
         self.node.set_shader_input('sky', self.node)
@@ -655,7 +658,7 @@ class Ground (PhysicalObject):
 
     def create_node(self):
         np = NodePath(GeomBuilder('block').add_block(self.color, (0, 0, 0), (99999, 0.01, 99999)).get_geom_node())
-        np.hide(PLAIN_CAM_BITS | LIGHT_CAM_BITS)
+        np.hide(PLAIN_CAM_BITS | LIGHT_CAM_BITS | BLOOM_CAM_BITS)
         return np
 
     def create_solid(self):
@@ -707,11 +710,12 @@ class Plasma (PhysicalObject):
         p.set_light_off()
         m.set_scale(PLASMA_SCALE)
         m.hide(LIGHT_CAM_BITS | MODEL_CAM_BITS)
+        m.show(BLOOM_CAM_BITS)
         glow = np.attach_new_node(PandaNode("plasmalight"))
         glow.setShaderInput("lightcolor", 1, 0.6, 0, 1.0)
         sphere.instanceTo(glow)
         glow.setScale(6.5)
-        glow.hide(MODEL_CAM_BITS | PLAIN_CAM_BITS)
+        glow.hide(MODEL_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         return np
 
     def create_solid(self):
@@ -775,7 +779,7 @@ class Missile (PhysicalObject):
 
     def create_node(self):
         self.model = load_model('missile.egg')
-        self.model.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS)
+        self.model.hide(LIGHT_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         self.body = self.model.find('**/bodywings')
         self.body.set_color(*self.color)
         self.main_engines = self.model.find('**/mainengines')
@@ -838,7 +842,7 @@ class Grenade (PhysicalObject):
 
     def create_node(self):
         self.model = Actor('grenade.egg')
-        self.model.hide(PLAIN_CAM_BITS | LIGHT_CAM_BITS)
+        self.model.hide(PLAIN_CAM_BITS | LIGHT_CAM_BITS | BLOOM_CAM_BITS)
         self.shell = self.model.find('**/shell')
         self.shell.set_color(*self.color)
         self.inner_top = self.model.find('**/inner_top')
@@ -933,6 +937,7 @@ class Shrapnel (PhysicalObject):
         self.node = self.world.render.attach_new_node(self.geom)
         self.colorhandle = self.node.find('**/*')
         self.node.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS)
+        self.node.show(PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         return self.node
 
     def create_solid(self):
@@ -1096,7 +1101,7 @@ class World (object):
         self.spheremodel.instanceTo(glow)
         self.spheremodel.instanceTo(dot)
         glow.setScale(60*1.1)
-        glow.hide(MODEL_CAM_BITS | PLAIN_CAM_BITS)
+        glow.hide(MODEL_CAM_BITS | PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         dot.setScale(0.15)
         dot.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS)
         dot.setColor(color_r, color_g, color_b, 1.0)
@@ -1106,7 +1111,7 @@ class World (object):
         self.celestials = self.celestials.create_node()
         self.celestials.set_transparency(TransparencyAttrib.MAlpha)
         self.celestials.hide(MODEL_CAM_BITS | LIGHT_CAM_BITS)
-        self.celestials.show(PLAIN_CAM_BITS)
+        self.celestials.show(PLAIN_CAM_BITS | BLOOM_CAM_BITS)
         self.celestials.set_light_off()
         self.celestials.set_effect(CompassEffect.make(self.camera, CompassEffect.PPos))
         self.celestials.set_shader_auto(101)
