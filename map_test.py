@@ -18,6 +18,7 @@ from pavara.walker import Walker
 class MapTest (ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
+        self.light_shaders = None
         self.x = None
         self.y = None
 
@@ -25,8 +26,8 @@ class MapTest (ShowBase):
         self.initP3D()
         self.audio3d = Audio3DManager.Audio3DManager(self.sfxManagerList[0], self.cam)
 
-        self.doc = False
-        self.map = False
+        self.doc = None
+        self.map = None
 
         self.modelbuffer = self.makeFBO("model buffer",1)
         self.lightbuffer = self.makeFBO("light buffer",0)
@@ -262,30 +263,29 @@ class MapTest (ShowBase):
         if self.map:
             self.map.remove(self.render)
             del(self.map)
+        if self.light_shaders:
+            self.light_shaders.removeNode()
+            del self.light_shaders
         if audio:
             maps = load_maps('Maps/%s' % mapname, self.cam, audio3d=self.audio3d)
         else:
             maps = load_maps('Maps/%s' % mapname, self.cam)
+        near = self.cam.node().get_lens().get_near()
         self.map = maps[0]
-        np = render.attach_new_node(GeomBuilder('ambient_lights').add_rect([0,0,0,1],-5,-5,0,5,5,0).get_geom_node())
-        np.hide(MODEL_CAM_BITS | BLOOM_CAM_BITS | PLAIN_CAM_BITS)
-        np.show(LIGHT_CAM_BITS)
-        np.setShader(loader.loadShader("Shaders/ambient.sha"))
-        np.set_shader_input('amb', self.map.world.ambient)
-        np.setAttrib(DepthTestAttrib.make(RenderAttrib.MLessEqual))
-        np.setAttrib(CullFaceAttrib.make(CullFaceAttrib.MCullClockwise))
-        np.set_pos(Vec3(0, 0, -3))
-        np.reparent_to(self.cam)
+        self.light_shaders = render.attach_new_node(PandaNode('lighting_shaders'))
+        amb = self.light_shaders.attach_new_node(GeomBuilder('ambient_lights').add_rect([0,0,0,1],-5,-5,0,5,5,0).get_geom_node())
+        self.light_shaders.hide(MODEL_CAM_BITS | BLOOM_CAM_BITS | PLAIN_CAM_BITS)
+        self.light_shaders.show(LIGHT_CAM_BITS)
+        amb.setShader(loader.loadShader("Shaders/ambient.sha"))
+        amb.set_shader_input('amb', self.map.world.ambient)
+        self.light_shaders.setAttrib(DepthTestAttrib.make(RenderAttrib.MLessEqual))
+        self.light_shaders.setAttrib(CullFaceAttrib.make(CullFaceAttrib.MCullClockwise))
+        self.light_shaders.set_pos(Vec3(0, 0, -near-near*0.01))
+        self.light_shaders.reparent_to(self.cam)
         for dlight in self.map.world.dlights:
-            np = render.attach_new_node(GeomBuilder('dir_lights').add_rect([0,0,0,1],-5,-5,0,5,5,0).get_geom_node())
-            np.hide(MODEL_CAM_BITS | BLOOM_CAM_BITS | PLAIN_CAM_BITS)
-            np.show(LIGHT_CAM_BITS)
-            np.setShader(loader.loadShader("Shaders/directional.sha"))
+            np = self.light_shaders.attach_new_node(GeomBuilder('dir_lights').add_rect([0,0,0,1],-5,-5,0,5,5,0).get_geom_node())
+            np.setShader(loader.loadShader('Shaders/directional.sha'))
             np.set_shader_input('dl', dlight)
-            np.setAttrib(DepthTestAttrib.make(RenderAttrib.MLessEqual))
-            np.setAttrib(CullFaceAttrib.make(CullFaceAttrib.MCullClockwise))
-            np.set_pos(Vec3(0, 0, -3))
-            np.reparent_to(self.cam)
 
         self.map.show(self.render)
         self.camera.setPos(*self.map.preview_cam[0])
