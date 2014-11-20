@@ -1,6 +1,6 @@
 from pavara.constants import *
 from pavara.utils.geom import GeomBuilder
-from pavara.base_objects import WorldObject, PhysicalObject
+from pavara.base_objects import WorldObject
 from direct.interval.LerpInterval import LerpFunc
 from panda3d.bullet import BulletRigidBodyNode, BulletBoxShape
 from panda3d.core import Point3, TransparencyAttrib
@@ -176,7 +176,7 @@ class TriangleExplosion(WorldObject):
             self.shrapnels.append(self.world.attach(Shrapnel(position, self.size, self.color, vector, self.lifetime)))
 
 
-class Shrapnel(PhysicalObject):
+class Shrapnel(WorldObject):
     def __init__(self, pos, size, color, vector, lifetime, name=None):
         super(Shrapnel, self).__init__(name)
         self.pos = pos

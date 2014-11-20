@@ -6,7 +6,7 @@ from panda3d.bullet import BulletBoxShape, BulletGhostNode, BulletSphereShape, B
 from direct.actor.Actor import Actor
 import math
 
-class Block (PhysicalObject):
+class Block(WorldObject):
     """
     A block.
     """
@@ -25,7 +25,7 @@ class Block (PhysicalObject):
     def create_solid(self):
         node = BulletRigidBodyNode(self.name)
         node.add_shape(BulletBoxShape(Vec3(self.size[0] / 2.0, self.size[1] / 2.0, self.size[2] / 2.0)))
-        return node
+        return NodePath(node)
 
     def add_solid(self, node):
         node.add_shape(BulletBoxShape(Vec3(self.size[0] / 2.0, self.size[1] / 2.0, self.size[2] / 2.0)), TransformState.make_pos_hpr(Point3(*self.center), self.hpr))
@@ -39,7 +39,7 @@ class Block (PhysicalObject):
         self.move(self.center)
         self.rotate(*self.hpr)
 
-class Ramp (PhysicalObject):
+class Ramp(WorldObject):
     """
     A ramp.
     """
@@ -81,7 +81,7 @@ class Ramp (PhysicalObject):
         self.move(self.midpoint)
         self.rotate(*self.hpr)
 
-class Wedge (PhysicalObject):
+class Wedge(WorldObject):
     """
     Ramps with some SERIOUS 'tude.
     """
@@ -122,7 +122,7 @@ class Wedge (PhysicalObject):
         self.move(self.midpoint)
         self.rotate(*self.hpr)
 
-class BlockRamp (PhysicalObject):
+class BlockRamp(WorldObject):
     """
     Old-style ramps like in the original game. Basically just a block that is
     rotated, and specified differently in XML. Should maybe be a Block subclass?
@@ -165,7 +165,9 @@ class BlockRamp (PhysicalObject):
         minr = max(midx, midy)
         for i in range(0, SEARCH_ITERATIONS):
             r = (maxr - minr)/2.0 + minr
-            # r = ((midl - x)**2 + (midh - y)**2)**0.5 substitute 0 for x and solve, then do the same for y. these two values represent the corners of a ramp and the distance between them is thickness.
+            # r = ((midl - x)**2 + (midh - y)**2)**0.5 substitute 0 for x and
+            # solve, then do the same for y. these two values represent the
+            # corners of a ramp and the distance between them is thickness.
             miny, maxy = self.__quadratic__(1, -2 * midy, midx**2 + midy**2 - r ** 2)
             minx, maxx = self.__quadratic__(1, -2 * midx, midx**2 + midy**2 - r ** 2)
             d = (minx**2 + miny**2)**0.5
@@ -175,7 +177,9 @@ class BlockRamp (PhysicalObject):
                 minr = r
             else: # r is too large
                 maxr = r
-        # x and y should be pretty close to where we want the corners of the ramp to be. the midpoint between them is where we want the base to be.
+        # x and y should be pretty close to where we want the corners of the
+        # ramp to be. the midpoint between them is where we want the base to
+        # be.
         leftcorner = Point2(0, miny)
         bottomcorner = Point2(minx, 0)
         newbase = (leftcorner - bottomcorner)/2 + bottomcorner
@@ -228,7 +232,7 @@ class BlockRamp (PhysicalObject):
         self.node.look_at(self.top, self.up)
         self.rotate_by(*self.hpr)
 
-class Dome (PhysicalObject):
+class Dome(WorldObject):
     """
     A dome.
     """
@@ -268,7 +272,7 @@ class Dome (PhysicalObject):
         self.move(self.center)
         self.rotate_by(*self.hpr)
 
-class Goody (PhysicalObject):
+class Goody(WorldObject):
     def __init__(self, pos, model, items, respawn, spin, name=None):
         super(Goody, self).__init__(name)
         self.pos = Vec3(*pos)
@@ -282,6 +286,9 @@ class Goody (PhysicalObject):
         self.active = True
         self.timeout = 0
         self.spin_bone = None
+
+    def get_family(self):
+        return "goody"
 
     def create_node(self):
         if self.model == "Grenade":
@@ -317,11 +324,14 @@ class Goody (PhysicalObject):
         node.set_kinematic(True)
         return node
 
-    def attached(self):
-        self.node.set_pos(self.pos)
+    def attached(self, node):
+        node.set_pos(self.pos)
+        node.setPythonTag('active', True)
+        node.setPythonTag('spin', self.spin)
+        node.setPythonTag('spin_bone', self.spin_bone)
         self.world.register_updater(self)
         self.world.register_collider(self)
-        self.solid.setIntoCollideMask(GHOST_COLLIDE_BIT)
+        node.node().setIntoCollideMask(GHOST_COLLIDE_BIT)
 
     def update(self, dt):
         if not self.active:
@@ -344,9 +354,10 @@ class Goody (PhysicalObject):
                self.active = False
                self.node.hide()
 
-class Sky (WorldObject):
+class Sky(WorldObject):
     """
-    The sky is actually just a square re-parented onto the camera, with a shader to handle the coloring and gradient.
+    The sky is actually just a square re-parented onto the camera, with a
+    shader to handle the coloring and gradient.
     """
 
     def __init__(self, ground=DEFAULT_GROUND_COLOR, color=DEFAULT_SKY_COLOR, horizon=DEFAULT_HORIZON_COLOR, scale=DEFAULT_HORIZON_SCALE):
@@ -356,7 +367,7 @@ class Sky (WorldObject):
         self.horizon = horizon
         self.scale = scale
 
-    def attached(self):
+    def attached(self, node):
         if not self.world.camera:
             self.node = self.world.scene.attach_new_node('sky')
             return
@@ -393,10 +404,11 @@ class Sky (WorldObject):
     def set_scale(self, height):
         self.scale = height
         self.node.set_shader_input('gradientHeight', self.scale, 0, 0, 0)
+
     def detach(self):
         self.node.detach_node()
 
-class Ground (PhysicalObject):
+class Ground(WorldObject):
     """
     The ground. This is not a visible object, but does create a physical solid.
     """
@@ -410,23 +422,25 @@ class Ground (PhysicalObject):
         node.add_shape(BulletPlaneShape(Vec3(0, 1, 0), 1))
         return node
 
-    def attached(self):
-        self.move((0, -1.0, 0))
+    def attached(self, node):
+        node.set_pos(0, -1.0, 0)
         # We need to tell the sky shader what color we are.
         self.world.sky.set_ground(self.color)
 
-class Incarnator (PhysicalObject):
+class Incarnator(WorldObject):
     def __init__(self, pos, heading, name=None):
         super(Incarnator, self).__init__(name)
         self.pos = Vec3(*pos)
         self.heading = Vec3(to_cartesian(math.radians(heading), 0, 1000.0 * 255.0 / 256.0)) * -1
+        self.sound = None
 
-    def attached(self):
+    def attached(self, node):
         self.dummy_node = self.world.scene.attach_new_node("incarnator"+self.name)
         self.dummy_node.set_pos(self.world.scene, self.pos)
         if self.world.audio3d:
             self.sound = self.world.audio3d.loadSfx('Sounds/incarnation_mono.wav')
-        else: self.sound = False
+        else:
+            self.sound = None
 
     def was_used(self):
         if self.sound:

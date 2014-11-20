@@ -39,6 +39,7 @@ class Splash (object):
         if in_map:
             self.switch_map(in_map)
             self.start_map()
+            print self.render.ls()
         else:
             self.switch_map("../Ui/scenes/splash.xml", audio=False)
             self.fade_in()
@@ -143,7 +144,6 @@ class Splash (object):
         props = WindowProperties()
         props.setCursorHidden(True)
         self.win.requestProperties(props)
-        print self.render.analyze()
 
     def quit_clicked(self):
         exit()

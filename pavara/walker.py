@@ -20,7 +20,7 @@ MIN_WALKFUNC_SIZE_FACTOR = .001
 MAX_WALKFUNC_SIZE_FACTOR = 22
 WALKFUNC_STEPS = 14
 
-class LoadedMissile (object):
+class LoadedMissile(object):
 
     def __init__(self, actor, color):
         self.missile_loaded = False
@@ -56,7 +56,7 @@ class LoadedMissile (object):
         self.missile_loaded = False
         self.loaded_missile.hide()
 
-class LoadedGrenade (object):
+class LoadedGrenade(object):
 
     def __init__(self, actor, color):
         self.grenade_loaded = False
@@ -91,7 +91,7 @@ class LoadedGrenade (object):
         self.grenade_loaded = False
         self.loaded_grenade.hide()
 
-class Sights (object):
+class Sights(object):
 
     def __init__(self, left_barrel, right_barrel, world):
         self.scene = world.scene
@@ -158,7 +158,7 @@ class Sights (object):
         sight.find("**/sight").setColor(*SIGHTS_FRIENDLY_COLOR)
 
 
-class LegBones (object):
+class LegBones(object):
 
     def __init__(self, scene, physics, hip, foot, foot_ref, top, bottom):
         self.foot_bone = foot
@@ -298,7 +298,7 @@ class LegBones (object):
         else:
             return
 
-class Skeleton (object):
+class Skeleton(object):
 
     upbob = Vec3(0, 0.05, 0)
     downbob = upbob * -1
@@ -375,7 +375,7 @@ class Skeleton (object):
                 leg.ik_leg()
 
 
-class Walker (PhysicalObject):
+class Walker(WorldObject):
 
     collide_bits = SOLID_COLLIDE_BIT
 
@@ -412,6 +412,9 @@ class Walker (PhysicalObject):
         self.player = player
         self.can_jump = False
         self.crouch_impulse = 0
+
+    def get_family(self):
+        return 'walker'
 
     def get_model_part(self, obj_name):
         return self.actor.find("**/%s" % obj_name)
@@ -478,7 +481,7 @@ class Walker (PhysicalObject):
                 self.get_model_part(part).setColor(*color)
         return
 
-    def attached(self):
+    def attached(self, node):
         self.integrator = Integrator(self.world.gravity)
         #self.world.register_collider(self)
         self.world.register_updater(self)
@@ -588,7 +591,7 @@ class Walker (PhysicalObject):
     def st_result(self, cur_pos, new_pos):
         return self.world.physics.sweepTestClosest(self.walker_capsule_shape, cur_pos, new_pos, self.collides_with, 0)
 
-    def update(self, dt):
+    def update(self, node, dt):
         dt = min(dt, 0.2) # let's just temporarily assume that if we're getting less than 5 fps, dt must be wrong.
         yaw = self.movement['left'] + self.movement['right']
         self.rotate_by(yaw * dt * 60, 0, 0)

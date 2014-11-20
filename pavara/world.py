@@ -8,6 +8,124 @@ from panda3d.bullet import BulletDebugNode, BulletWorld, BulletGhostNode, Bullet
 import math
 import random
 import string
+from collections import namedtuple
+
+ObjectFamily = namedtuple('ObjectFamily', ['np', 'update'])
+
+def null_update(world, node, dt):
+    pass
+
+def update_goody(world, node, dt):
+    if not node.getPythonTag('active'):
+        self.timeout += dt
+        if self.timeout > self.respawn:
+            node.setPythonTag['active'] = True
+            node.show()
+            self.timeout = 0
+        return
+    spin_bone = node.getPythonTag('spin_bone')
+    spin = node.getPythonTag('spin')
+    if spin_bone:
+        spin_bone.set_hpr(spin_bone, spin[2]*dt, spin[1]*dt, spin[0]*dt)
+    else:
+        node.set_hpr(node, *[x * dt for x in spin])
+    result = world.physics.contact_test(node.node())
+    for contact in result.getContacts():
+        node_1 = contact.getNode0()
+        node_2 = contact.getNode1()
+        if "Walker" in node_2.get_name():
+           # TODO: identify which player and credit them with the items.
+           node.setPythonTag('active', False)
+           node.hide()
+
+
+def update_walker(world, node, dt):
+    dt = min(dt, 0.2) # let's just temporarily assume that if we're getting less than 5 fps, dt must be wrong.
+    yaw = self.movement['left'] + self.movement['right']
+    self.rotate_by(yaw * dt * 60, 0, 0)
+    walk = self.movement['forward'] + self.movement['backward']
+    start = self.position()
+    cur_pos_ts = TransformState.make_pos(self.position() + self.head_height)
+
+    if self.on_ground:
+        friction = DEFAULT_FRICTION
+    else:
+        friction = AIR_FRICTION
+
+    #to debug walk cycle (stay in place)
+    #riction = 0
+
+    speed = walk
+    pos = self.position()
+    self.move_by(0, 0, speed)
+    direction = self.position() - pos
+    newpos, self.xz_velocity = Friction(direction, friction).integrate(pos, self.xz_velocity, dt)
+    self.move(newpos)
+
+    # Cast a ray from just above our feet to just below them, see if anything hits.
+    pt_from = self.position() + Vec3(0, 1, 0)
+    pt_to = pt_from + Vec3(0, -1.1, 0)
+    result = self.world.physics.ray_test_closest(pt_from, pt_to, MAP_COLLIDE_BIT | SOLID_COLLIDE_BIT)
+
+    # this should return 'on ground' information
+    self.skeleton.update_legs(walk, dt, self.world.scene, self.world.physics)
+
+    if self.y_velocity.get_y() <= 0 and result.has_hit():
+        self.on_ground = True
+        self.crouch_impulse = self.y_velocity.y
+        self.y_velocity = Vec3(0, 0, 0)
+        self.move(result.get_hit_pos())
+        self.skeleton.left_leg_on_ground = True
+        self.skeleton.right_leg_on_ground = True
+    else:
+        self.on_ground = False
+        current_y = Point3(0, self.position().get_y(), 0)
+        y, self.y_velocity = self.integrator.integrate(current_y, self.y_velocity, dt)
+        self.move(self.position() + (y - current_y))
+
+    if self.crouching and self.skeleton.crouch_factor < 1:
+        self.skeleton.crouch_factor += (dt*60)/10
+        self.skeleton.update_legs(0, dt, self.world.scene, self.world.physics)
+    elif not self.crouching and self.skeleton.crouch_factor > 0:
+        self.skeleton.crouch_factor -= (dt*60)/10
+        self.skeleton.update_legs(0, dt, self.world.scene, self.world.physics)
+
+    #if self.crouch_impulse < 0:
+
+    goal = self.position()
+    adj_dist = abs((start - goal).length())
+    new_pos_ts = TransformState.make_pos(self.position() + self.head_height)
+
+    sweep_result = self.st_result(cur_pos_ts, new_pos_ts)
+    count = 0
+    while sweep_result.has_hit() and count < 10:
+        moveby = sweep_result.get_hit_normal()
+        self.xz_velocity = -self.xz_velocity.cross(moveby).cross(moveby)
+        moveby.normalize()
+        moveby *= adj_dist * (1 - sweep_result.get_hit_fraction())
+        self.move(self.position() + moveby)
+        new_pos_ts = TransformState.make_pos(self.position() + self.head_height)
+        sweep_result = self.st_result(cur_pos_ts, new_pos_ts)
+        count += 1
+
+    if self.energy > WALKER_MIN_CHARGE_ENERGY:
+        if self.left_gun_charge < 1:
+            self.energy -= WALKER_ENERGY_TO_GUN_CHARGE[0]
+            self.left_gun_charge += WALKER_ENERGY_TO_GUN_CHARGE[1]
+        else:
+            self.left_gun_charge = math.floor(self.left_gun_charge)
+
+        if self.right_gun_charge < 1:
+            self.energy -= WALKER_ENERGY_TO_GUN_CHARGE[0]
+            self.right_gun_charge += WALKER_ENERGY_TO_GUN_CHARGE[1]
+        else:
+            self.right_gun_charge = math.floor(self.right_gun_charge)
+
+    if self.energy < 1:
+        self.energy += WALKER_RECHARGE_FACTOR * (dt)
+
+    if self.player:
+        self.sights.update(self.left_barrel_joint, self.right_barrel_joint)
 
 class World (object):
     """
@@ -15,16 +133,24 @@ class World (object):
     """
 
     def __init__(self, camera, debug=False, audio3d=None, client=None, server=None):
-        self.objects = {}
 
         self.incarnators = []
 
+
         self.collidables = set()
 
-        self.updatables = set()
-        self.updatables_to_add = set()
         self.garbage = set()
         self.scene = NodePath('world')
+        mapnp = NodePath('map_objects')
+        mapnp.reparentTo(self.scene)
+        walkers = NodePath('walkers')
+        walkers.reparentTo(self.scene)
+        goodies = NodePath('goodies')
+        goodies.reparentTo(self.scene)
+        self.families = { 'map_object': ObjectFamily(np=mapnp, update=null_update),
+                          'goody': ObjectFamily(np=goodies, update=update_goody),
+                          'walker': ObjectFamily(np=walkers, update=update_walker),
+                        }
 
 
         # Set up the physics world. TODO: let maps set gravity.
@@ -50,38 +176,43 @@ class World (object):
 
 
     def attach(self, obj):
-        assert hasattr(obj, 'world') and hasattr(obj, 'name')
-        assert obj.name not in self.objects
         obj.world = self
-        if obj.name.startswith('Incarnator'):
-            self.incarnators.append(obj)
-        if hasattr(obj, 'create_node') and hasattr(obj, 'create_solid'):
-            # Let each object define it's own NodePath, then reparent them.
-            obj.node = obj.create_node()
-            obj.solid = obj.create_solid()
-            if obj.solid:
-                if isinstance(obj.solid, BulletRigidBodyNode):
-                    self.physics.attach_rigid_body(obj.solid)
-                elif isinstance(obj.solid, BulletGhostNode):
-                    self.physics.attach_ghost(obj.solid)
-            if obj.node:
-                if obj.solid:
-                    # If this is a solid visible object, create a new physics node and reparent the visual node to that.
-                    phys_node = self.scene.attach_new_node(obj.solid)
-                    obj.node.reparent_to(phys_node)
-                    obj.node = phys_node
-                else:
-                    # Otherwise just reparent the visual node to the root.
-                    obj.node.reparent_to(self.scene)
-            elif obj.solid:
-                obj.node = self.scene.attach_new_node(obj.solid)
-            if obj.solid and obj.collide_bits is not None:
-                obj.solid.set_into_collide_mask(obj.collide_bits)
-        self.objects[obj.name] = obj
+        node = None
+        solid = None
+        if hasattr(obj, 'create_node'):
+            node = obj.create_node()
+        if hasattr(obj, 'create_solid'):
+            solid = obj.create_solid()
+        family = obj.get_family()
+        parent = self.families[family]
+        if solid:
+            if isinstance(solid, BulletRigidBodyNode):
+                self.physics.attach_rigid_body(solid)
+            elif isinstance(solid, BulletGhostNode):
+                self.physics.attach_ghost(solid)
+        if node:
+            if solid:
+                # If this is a solid visible object, create a new physics
+                # node and reparent the visual node to that.
+                phys_node = parent.np.attach_new_node(solid)
+                node.reparent_to(phys_node)
+                node = phys_node
+            else:
+                # Otherwise just reparent the visual node to the root.
+                node.reparent_to(parent.np)
+            node.setTag('type', family)
+        elif solid:
+            node = parent.np.attach_new_node(solid)
+        if solid and obj.collide_bits is not None:
+            solid.set_into_collide_mask(obj.collide_bits)
+
         # Let the object know it has been attached.
-        obj.attached()
+        obj.attached(node)
         return obj
 
+    def attach_incarnator(self, incarn):
+        incarn.world = self
+        self.incarnators.append(incarn)
 
 
     def create_hector(self, name=None):
@@ -91,12 +222,12 @@ class World (object):
         return h
 
     def register_updater(self, obj):
-        assert isinstance(obj, WorldObject)
-        self.updatables.add(obj)
+        #self.updatables.add(obj)
+        pass
 
     def register_updater_later(self, obj):
-        assert isinstance(obj, WorldObject)
-        self.updatables_to_add.add(obj)
+        #self.updatables_to_add.add(obj)
+        pass
 
 
 
@@ -105,13 +236,10 @@ class World (object):
         Called every frame to update the physics, etc.
         """
         dt = globalClock.getDt()
-        for obj in self.updatables_to_add:
-            self.updatables.add(obj)
-        self.updatables_to_add = set()
-        for obj in self.updatables:
-            obj.update(dt)
-        self.updatables -= self.garbage
         self.collidables -= self.garbage
+        for family in self.families.values():
+            for np in family.np.getChildren():
+                family.update(self, np, dt)
         while True:
             if len(self.garbage) < 1:
                 break;

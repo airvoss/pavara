@@ -1,7 +1,7 @@
 from pandac.PandaModules import Point3
 from panda3d.bullet import BulletGhostNode, BulletSphereShape, BulletRigidBodyNode
 from direct.actor.Actor import Actor
-from pavara.base_objects import PhysicalObject
+from pavara.base_objects import WorldObject
 from pavara.effects import TriangleExplosion
 from pavara.utils.integrator import Integrator
 from pavara.assets import load_model
@@ -9,10 +9,10 @@ from pavara.constants import *
 import math
 import random
 
-class Projectile(PhysicalObject):
+class Projectile(WorldObject):
     pass
 
-class Plasma (Projectile):
+class Plasma(Projectile):
     def __init__(self, pos, hpr, energy, name=None):
         super(Plasma, self).__init__(name)
         self.pos = Vec3(*pos)
@@ -84,7 +84,7 @@ class Plasma (Projectile):
     def decompose(self):
         pass
 
-class Missile (Projectile):
+class Missile(Projectile):
     def __init__(self, pos, hpr, color, name=None):
         super(Missile, self).__init__(name)
         self.pos = Vec3(*pos)
@@ -167,7 +167,7 @@ class Missile (Projectile):
         self.world.audio3d.detachSound(self.sound)
         self.world.garbage.add(self)
 
-class Grenade (Projectile):
+class Grenade(Projectile):
     def __init__(self, pos, hpr, color, walker_v, name=None):
         super(Grenade, self).__init__(name)
         self.pos = Vec3(*pos)
